@@ -8,11 +8,11 @@ const int unit_number = 1; // unique ID for this unit (<=999)
 const int scaling_factor = 1E3; // scaling factor for separating unit and node IDs
 int sensorID = node_number*scaling_factor+unit_number;
 
-const int send_interval = 400;
+const int send_interval = 200;
 
 void setup() {
   Serial.begin(9600);
-  //while (!Serial);
+  while (!Serial);
   
   Serial.println("LoRa Receiver");
 
@@ -25,7 +25,7 @@ void setup() {
 }
 
 void loop() {
-  //delay(5000);
+  //delay(2000);
 
   bool sensor_connected = 0; // no sensor connected yet
   long startTime;
@@ -33,24 +33,18 @@ void loop() {
   
   // Broadcast that the node is free to recieve
   while(!sensor_connected) {
-    Serial.println("Sending FREE...");
+    Serial.print("Sending FREE... ms ");
     Serial.println(millis());
-    startTime = millis();        // time of last packet send
-    while(millis() - startTime < send_interval) { // send for send_interval milliseconds
-      LoRa.beginPacket();
-      LoRa.print("FREE");
-      LoRa.endPacket();
-      delay(random(send_interval/10));
-    }
+    sendFREE();
     
     // Listen for unit number
-    Serial.println("Listening for Unit...");
+    Serial.print("Listening for Unit... ms ");
     Serial.println(millis());
     startTime = millis();        // time of last packet send
     while(!sensor_connected & (millis() - startTime < send_interval*2)) { // receive for 2*send_interval milliseconds
       int packetSize = LoRa.parsePacket();
       if (packetSize) {
-        Serial.println("Unit Detected.");
+        Serial.print("Unit Detected. ms ");
         Serial.println(millis());
         output_LoRa = "";
         while (LoRa.available()) {
@@ -78,38 +72,32 @@ void loop() {
   }
 
   // send unit number for confirmation
-  Serial.println("Sending Unit Confirmation...");
+  Serial.print("Sending Unit Confirmation... ms ");
   Serial.println(millis());
   startTime = millis();        // time of last packet send
-  while(millis() - startTime < (send_interval*5)) {
+  while(millis() - startTime < (send_interval*2)) {
     LoRa.beginPacket();
     LoRa.print(output_LoRa);
     LoRa.endPacket();
     delay(send_interval/random(100));
   }
   Serial.print(output_LoRa);
-  Serial.println(" Sent.");
+  Serial.print(" Sent. ms ");
   Serial.println(millis());
 
   Serial.println("Done with task.");
   Serial.println();
+  LoRa.sleep();
   while(1);
-  //Serial.println("Sending...");
-  //Serial.print("SensorID:");
-  //Serial.println(sensorID);
-  
-  //LoRa.sleep(); // start in sleep mode
-  //delay(500);
+}
 
-  // send packet
-  //LoRa.beginPacket();
-  //LoRa.print("SensorID:");
-  //LoRa.print(sensorID);
-  //LoRa.endPacket();
 
-  //Serial.println("Sleeping for 5 sec...");
-  //LoRa.sleep();
-  //delay(5000);
-  //LoRa.sleep(); // start in sleep mode
-  //}
+void sendFREE() {
+  long startTime = millis();        // time of last packet send
+  while(millis() - startTime < send_interval) { // send for send_interval milliseconds
+    LoRa.beginPacket();
+    LoRa.print("FREE");
+    LoRa.endPacket();
+    delay(random(send_interval/10));
+  }
 }

@@ -7,12 +7,12 @@ const int scaling_factor = 1E3; // scaling factor for separating unit and node I
 String sensorID = "SensorID:" + String(node_number*scaling_factor+unit_number);
 
 const int freq = 868E6;
-const int send_interval = 400;
+const int send_interval = 200;
 const int numtries = 50; // number of tries before taking a break
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial);
+  //while (!Serial);
 
   Serial.println("LoRa Sensor");
 
@@ -23,7 +23,7 @@ void setup() {
 }
 
 void loop() {
-  delay(2000);
+  //delay(2000);
   
   bool node_connected = 0; // no sensor connected yet
   int n = 0;
@@ -42,7 +42,7 @@ void loop() {
         Serial.print(" . ms ");
         Serial.println(millis());
       
-        delay(send_interval); // wait for send_interval milliseconds
+       delay(random(0.4*send_interval) + 0.8*send_interval); // wait for 0.8 to 1.2 send_interval milliseconds
       
         sendID();
         
@@ -56,7 +56,7 @@ void loop() {
       LoRa.sleep();
       Serial.println("Sleeping...");
       Serial.println();
-      delay(random(2*send_interval) + send_interval); // wait 2-3 send_intervals
+      delay(random(send_interval) + 2*send_interval); // wait 2-3 send_intervals
       Serial.println("Waiting for FREE...");
     }
     n = n % numtries;
@@ -64,6 +64,7 @@ void loop() {
 
   Serial.println("Done with task.");
   Serial.println();
+  LoRa.sleep();
   while(1);
 }
 
@@ -93,7 +94,9 @@ bool checkID() {
   bool node_connected = 0;
   Serial.print("Checking Unit ID: ms ");
   Serial.println(millis());
-  while(!node_connected) {
+
+  int m = 0;
+  while(!node_connected & (m < numtries)) {
     int packetSize = LoRa.parsePacket();
     if (packetSize) {
       // read packet
@@ -115,6 +118,7 @@ bool checkID() {
       }
     }
     delay(random(send_interval/10));
+    m++;
   }
 
   Serial.println("Checking Unit ID done.");
