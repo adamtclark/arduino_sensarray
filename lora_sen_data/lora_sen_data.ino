@@ -23,38 +23,28 @@ void setup() {
 }
 
 void loop() {
-  delay(5000);
+  delay(2000);
   
   bool node_connected = 0; // no sensor connected yet
   int n = 0;
-  Serial.println("Waiting for FREE...");
+  Serial.print("Waiting for FREE... ms ");
   Serial.println(millis());
   while(!node_connected) {
     int packetSize = LoRa.parsePacket();
     if (packetSize) {
-      Serial.println("Signal Detected.");
+      Serial.print("Signal Detected. ms ");
       Serial.println(millis());
-      // read packet
-      String output_LoRa = "";
-      while (LoRa.available()) {
-        output_LoRa = output_LoRa+(char)LoRa.read();
-      }
+      String output_LoRa = getPacket();
+      
       if(output_LoRa == "FREE") {
-        Serial.println("Node Detected.");
-        Serial.println(output_LoRa);
+        Serial.print("Node Detected. ID ");
+        Serial.print(output_LoRa);
+        Serial.print(" . ms ");
+        Serial.println(millis());
       
         delay(send_interval); // wait for send_interval milliseconds
       
-        long startTime = millis();        // time of last packet send
-        while(millis() - startTime < send_interval) {
-          LoRa.beginPacket();
-          LoRa.print(sensorID);
-          LoRa.endPacket();
-          delay(send_interval/random(100));
-        }
-        Serial.print(sensorID);
-        Serial.println(" Sent.");
-        Serial.println(millis());
+        sendID();
         
         node_connected = checkID();
       }
@@ -77,9 +67,31 @@ void loop() {
   while(1);
 }
 
+String getPacket() {
+  // read packet
+  String output_LoRa = "";
+  while (LoRa.available()) {
+    output_LoRa = output_LoRa+(char)LoRa.read();
+  }
+  return(output_LoRa);
+}
+
+void sendID() {
+  long startTime = millis();        // time of last packet send
+  while(millis() - startTime < send_interval) {
+    LoRa.beginPacket();
+    LoRa.print(sensorID);
+    LoRa.endPacket();
+    delay(send_interval/random(100));
+  }
+  Serial.print(sensorID);
+  Serial.print(" Sent. ms ");
+  Serial.println(millis());
+}
+
 bool checkID() {
   bool node_connected = 0;
-  Serial.println("Checking Unit ID:");
+  Serial.print("Checking Unit ID: ms ");
   Serial.println(millis());
   while(!node_connected) {
     int packetSize = LoRa.parsePacket();
@@ -90,12 +102,15 @@ bool checkID() {
         output_LoRa = output_LoRa+(char)LoRa.read();
       }
       Serial.print("Output is: ");
-      Serial.println(output_LoRa);
+      Serial.print(output_LoRa);
+      Serial.print(". ms ");
       Serial.println(millis());
       
       if(sensorID ==output_LoRa) {
-        Serial.println("Successfully coupled.");
-        Serial.println(output_LoRa);
+        Serial.print("Successfully coupled. Node ");
+        Serial.print(output_LoRa);
+        Serial.print(" . ms ");
+        Serial.println(millis());
         node_connected = 1;
       }
     }

@@ -12,7 +12,7 @@ const int send_interval = 400;
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial);
+  //while (!Serial);
   
   Serial.println("LoRa Receiver");
 
@@ -25,7 +25,7 @@ void setup() {
 }
 
 void loop() {
-  delay(5000);
+  //delay(5000);
 
   bool sensor_connected = 0; // no sensor connected yet
   long startTime;
