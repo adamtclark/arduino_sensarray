@@ -21,8 +21,8 @@ unsigned const int soil_moist_sensors[soil_mosit_probe_number] = {3, 4, 5, 6, 7,
 #include <DHT.h> // header for air probes
 unsigned const int max_tries = 10; // maximum tries for DHT sensor read
 unsigned const int air_probe_number = 2;
-float air_humid_outputs[air_probe_number];
-float air_temp_outputs[air_probe_number];
+unsigned int air_humid_outputs[air_probe_number];
+int air_temp_outputs[air_probe_number];
 uint8_t air_sensors[air_probe_number] = {0, 1};
 DHT dht[] = {
   {air_sensors[1], DHT22},
@@ -38,7 +38,7 @@ unsigned const int soil_temp_probe_number = 10;
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 DeviceAddress deviceAddress[soil_temp_probe_number];
-float soil_temp_outputs[soil_temp_probe_number];
+int soil_temp_outputs[soil_temp_probe_number];
 
 // set up RTC
 #include "RTClib.h"
@@ -48,21 +48,21 @@ unsigned int rtc_day;
 unsigned int rtc_hour;
 unsigned int rtc_minute;
 unsigned int rtc_second;
-float rtc_temp;
+int rtc_temp;
 
 // battery check
 unsigned int battery_voltage;
 
 // set up arrays for data storage
-const int nrecords = 100; // number of local records to save
+const int nrecords = 150; // number of local records to save
 
-float data_air_temp[nrecords][air_probe_number];
-float data_air_humid[nrecords][air_probe_number];
-float data_soil_temp[nrecords][soil_temp_probe_number];
-int data_soil_moist[nrecords][soil_mosit_probe_number];
-int data_battery[nrecords];
-int data_time[nrecords][4];
-float data_rtc_temp[nrecords];
+int data_air_temp[nrecords][air_probe_number];
+unsigned int data_air_humid[nrecords][air_probe_number];
+int data_soil_temp[nrecords][soil_temp_probe_number];
+unsigned int data_soil_moist[nrecords][soil_mosit_probe_number];
+unsigned int data_battery[nrecords];
+unsigned int data_time[nrecords][4];
+int data_rtc_temp[nrecords];
 
 unsigned int samp_position = 0; // position in data array
 unsigned int trans_position = 0; // last record transmitted
@@ -140,17 +140,17 @@ void loop()
     int n;
     //Read data and store it to variables hum and temp
     n = 0;
-    air_humid_outputs[i] = dht[i].readHumidity();
+    air_humid_outputs[i] = round(dht[i].readHumidity()*100);
     while (isnan(air_humid_outputs[i]) & n < max_tries) {
       delay(1000);
-      air_humid_outputs[i] = dht[i].readHumidity();
+      air_humid_outputs[i] = round(dht[i].readHumidity()*100);
       n++;
     }
     n = 0;
-    air_temp_outputs[i] = dht[i].readTemperature();
+    air_temp_outputs[i] = round(dht[i].readTemperature()*100);
     while (isnan(air_temp_outputs[i]) & n < max_tries) {
       delay(1000);
-      air_temp_outputs[i] = dht[i].readTemperature();
+      air_temp_outputs[i] = round(dht[i].readTemperature()*100);
       n++;
     }
   }
@@ -160,7 +160,7 @@ void loop()
   delay(1000);
   sensors.requestTemperatures();
   for(i = 0; i <soil_temp_probe_number; i++) {
-     soil_temp_outputs[i] = sensors.getTempC(deviceAddress[i]);
+     soil_temp_outputs[i] = round(sensors.getTempC(deviceAddress[i])*100);
   }
 
   Serial.println("measuring battery...");
@@ -186,7 +186,7 @@ void loop()
   digitalWrite(A2, HIGH);
   delay(5000);
   DateTime now = rtc.now();
-  rtc_temp = rtc.getTemperature();
+  rtc_temp = round(rtc.getTemperature()*100);
   digitalWrite(A2, LOW);
   rtc_month = now.month();
   rtc_day = now.day();
@@ -296,25 +296,7 @@ void loop()
   unsigned int failcount = 0;
   while((trans_position != samp_position) & (failcount < max_failcount)) {
     // make checksum
-    float checksum = 0;
-    for(i = 0; i < air_probe_number; i++) {
-      checksum = checksum + data_air_temp[trans_position][i];
-      checksum = checksum + data_air_humid[trans_position][i];
-    }
-    for(i = 0; i < soil_temp_probe_number; i++) {
-      checksum = checksum + data_soil_temp[trans_position][i];
-    }
-    for(i = 0; i < soil_mosit_probe_number; i++) {
-      checksum = checksum + data_soil_moist[trans_position][i];
-    }
-    checksum = checksum + data_battery[trans_position];
-    
-    checksum = checksum + data_time[trans_position][0];
-    checksum = checksum + data_time[trans_position][1];
-    checksum = checksum + data_time[trans_position][2];
-    checksum = checksum + data_time[trans_position][3];
-    checksum = checksum + data_rtc_temp[trans_position];
-    checksum = checksum + unit_number;
+    long checksum_out = checksum_fun(trans_position);
 
     // wait until connection is open
 
@@ -349,4 +331,29 @@ void loop()
   Serial.begin(9600);
   Serial.println("wake up...");
   Serial.println();
+}
+
+
+long checksum_fun(int trans_position) {
+  long checksum = 0;
+  for(i = 0; i < air_probe_number; i++) {
+    checksum = checksum + data_air_temp[trans_position][i];
+    checksum = checksum + data_air_humid[trans_position][i];
+  }
+  for(i = 0; i < soil_temp_probe_number; i++) {
+    checksum = checksum + data_soil_temp[trans_position][i];
+  }
+  for(i = 0; i < soil_mosit_probe_number; i++) {
+    checksum = checksum + data_soil_moist[trans_position][i];
+  }
+  checksum = checksum + data_battery[trans_position];
+  
+  checksum = checksum + data_time[trans_position][0];
+  checksum = checksum + data_time[trans_position][1];
+  checksum = checksum + data_time[trans_position][2];
+  checksum = checksum + data_time[trans_position][3];
+  checksum = checksum + data_rtc_temp[trans_position];
+  checksum = checksum + unit_number;
+
+  return(checksum);
 }
