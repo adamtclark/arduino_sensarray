@@ -8,7 +8,24 @@ const int unit_number = 1; // unique ID for this unit (<=999)
 const int scaling_factor = 1E3; // scaling factor for separating unit and node IDs
 int sensorID = node_number*scaling_factor+unit_number;
 
-const int send_interval = 200;
+const int send_interval = 500;
+const int numtries = 50; // number of tries before taking a break
+
+// save data
+unsigned const int air_probe_number = 2;
+unsigned const int soil_temp_probe_number = 2;
+unsigned const int soil_mosit_probe_number = 2;
+
+int save_air_temp[air_probe_number];
+int save_air_humid[air_probe_number];
+int save_soil_temp[soil_temp_probe_number];
+int save_soil_moist[soil_mosit_probe_number];
+int save_battery;
+int save_time[4];
+int save_rtc_temp;
+int save_unit_number;
+long save_checksum_out;
+long local_checksum_out;
 
 void setup() {
   Serial.begin(9600);
@@ -25,6 +42,7 @@ void setup() {
 }
 
 void loop() {
+  int i;
   //delay(2000);
 
   long startTime;
@@ -70,11 +88,97 @@ void loop() {
   Serial.println(millis());
   sendID_unit(output_LoRa);
 
+  
+  // connection successful - get data
+  bool signal_received = 0;
+  unsigned int n = 0;
+  while(!signal_received & n < numtries) {
+    int packetSize = LoRa.parsePacket();
+    if (packetSize) {
+      // parse data
+      getData_fun();
+
+      // check checksum
+      local_checksum_out = checksum_fun();
+
+      Serial.println("Air Temp: ");
+      for(i = 0; i < air_probe_number; i++) {
+        Serial.println(save_air_temp[i]);
+      }
+      Serial.println("Air Humid: ");
+      for(i = 0; i < air_probe_number; i++) {
+        Serial.println(save_air_humid[i]);
+      }
+      Serial.println("Soil Temp: ");
+      for(i = 0; i < soil_temp_probe_number; i++) {
+        Serial.println(save_soil_temp[i]);
+      }
+      Serial.println("Soil Moist: ");
+      for(i = 0; i < soil_mosit_probe_number; i++) {
+        Serial.println(save_soil_moist[i]);
+      }
+      Serial.print("Battery: ");
+      Serial.println(save_battery);
+      Serial.println("Time: ");
+      for(i = 0; i < 4; i++) {
+        Serial.println(save_time[i]);
+      }
+      Serial.print("RTC Temp: ");
+      Serial.println(save_rtc_temp);
+      Serial.print("Unit: ");
+      Serial.println(save_unit_number);
+      Serial.print("Check Sum Local: ");
+      Serial.println(local_checksum_out);
+      Serial.print("Check Sum Incoming: ");
+      Serial.println(save_checksum_out);
+
+
+      
+
+      // send confirmation
+      if(local_checksum_out == save_checksum_out) {
+        sendSuccess();
+  
+        signal_received = 1;
+      }
+      else {
+        Serial.print("Checksum failed. ");
+        Serial.print(local_checksum_out);
+        Serial.print(" local vs. ");
+        Serial.print(save_checksum_out);
+        Serial.print(" incoming. ms ");
+        Serial.println(millis());
+      }
+    }
+    n++;
+
+    if(n >= numtries) {
+      Serial.print("Receiving Failed - ending attempts. ms ");
+      Serial.println(millis());
+    }
+    
+    delay(send_interval/random(10));
+  }
+  
+  // TODO: Add in breaks. AND need to add query for ending data transmission after getting all records.
+
   Serial.println("Done with task.");
   Serial.println();
   LoRa.sleep();
   while(1);
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 void sendFREE() {
@@ -83,7 +187,7 @@ void sendFREE() {
     LoRa.beginPacket();
     LoRa.print("FREE");
     LoRa.endPacket();
-    delay(random(send_interval/10));
+    delay(random(send_interval/100));
   }
 }
 
@@ -110,9 +214,115 @@ void sendID_unit(String output_LoRa) {
     LoRa.beginPacket();
     LoRa.print(output_LoRa);
     LoRa.endPacket();
-    delay(send_interval/random(100));
+    delay(send_interval/random(10));
   }
   Serial.print(output_LoRa);
   Serial.print(" Sent. ms ");
   Serial.println(millis());
+}
+
+void getData_fun() {
+  unsigned int i;
+  unsigned int j;
+  long startTime = millis();        // time of last packet send
+  while(millis() - startTime < (2*send_interval)) {
+    uint8_t buf[4];
+    
+    while (LoRa.available()) {
+      // air temp
+      for(i = 0; i < air_probe_number; i++) {
+        for(j = 0; j < 2; j++) {
+          buf[j] = LoRa.read();
+        }
+        save_air_temp[i] = buf[0] | (buf[1] << 8);
+      }
+      // air humid
+      for(i = 0; i < air_probe_number; i++) {
+        for(j = 0; j < 2; j++) {
+          buf[j] = LoRa.read();
+        }
+        save_air_humid[i] = buf[0] | (buf[1] << 8);
+      }
+      // soil temp
+      for(i = 0; i < soil_temp_probe_number; i++) {
+        for(j = 0; j < 2; j++) {
+          buf[j] = LoRa.read();
+        }
+        save_soil_temp[i] = buf[0] | (buf[1] << 8);
+      }
+      // soil moist
+      for(i = 0; i < soil_mosit_probe_number; i++) {
+        for(j = 0; j < 2; j++) {
+          buf[j] = LoRa.read();
+        }
+        save_soil_moist[i] = buf[0] | (buf[1] << 8);
+      }
+      // battery
+      for(j = 0; j < 2; j++) {
+          buf[j] = LoRa.read();
+      }
+      save_battery = buf[0] | (buf[1] << 8);
+      // time
+      for(i = 0; i < 4; i++) {
+        for(j = 0; j < 2; j++) {
+          buf[j] = LoRa.read();
+        }
+        save_time[i] = buf[0] | (buf[1] << 8);
+      }
+      // RTC
+      for(j = 0; j < 2; j++) {
+          buf[j] = LoRa.read();
+      }
+      save_rtc_temp = buf[0] | (buf[1] << 8);
+      // unit
+      for(j = 0; j < 2; j++) {
+          buf[j] = LoRa.read();
+      }
+      save_unit_number = buf[0] | (buf[1] << 8);
+      // checksum
+      for(j = 0; j < 4; j++) {
+          buf[j] = LoRa.read();
+      }
+      save_checksum_out = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
+    }
+    
+    delay(send_interval/random(10));
+  }
+  Serial.print("Data Received. ms ");
+  Serial.println(millis());
+}
+
+long checksum_fun() {
+  unsigned int i;
+  long checksum = 0;
+  for(i = 0; i < air_probe_number; i++) {
+    checksum = checksum + save_air_temp[i];
+    checksum = checksum + save_air_humid[i];
+  }
+  for(i = 0; i < soil_temp_probe_number; i++) {
+    checksum = checksum + save_soil_temp[i];
+  }
+  for(i = 0; i < soil_mosit_probe_number; i++) {
+    checksum = checksum + save_soil_moist[i];
+  }
+  checksum = checksum + save_battery;
+  
+  checksum = checksum + save_time[0];
+  checksum = checksum + save_time[1];
+  checksum = checksum + save_time[2];
+  checksum = checksum + save_time[3];
+  checksum = checksum + save_rtc_temp;
+  checksum = checksum + save_unit_number;
+
+  return(checksum);
+}
+
+void sendSuccess() {
+  long startTime = millis();        // time of last packet send
+  while(millis() - startTime < (send_interval*2)) { // send for send_interval milliseconds
+    LoRa.beginPacket();
+    LoRa.print("Success");
+    LoRa.endPacket();
+    delay(random(send_interval/10));
+  }
 }
