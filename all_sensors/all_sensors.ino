@@ -335,7 +335,7 @@ void loop()
     //} else {
       // transmission failed
       failcount++;
-    }
+    //}
   }
 
 
