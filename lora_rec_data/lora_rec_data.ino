@@ -27,11 +27,11 @@ void setup() {
 void loop() {
   //delay(2000);
 
-  bool sensor_connected = 0; // no sensor connected yet
   long startTime;
   String output_LoRa;
   
   // Broadcast that the node is free to recieve
+  bool sensor_connected = 0;
   while(!sensor_connected) {
     Serial.print("Sending FREE... ms ");
     Serial.println(millis());
@@ -46,17 +46,11 @@ void loop() {
       if (packetSize) {
         Serial.print("Unit Detected. ms ");
         Serial.println(millis());
-        output_LoRa = "";
-        while (LoRa.available()) {
-          // read packet
-          output_LoRa = output_LoRa+(char)LoRa.read();
-        }
-        if((output_LoRa.substring(0,9) =="SensorID:") & (output_LoRa.substring(9,10) =="1")) {
-          Serial.println(output_LoRa);
-          sensor_connected = 0;
-        }
-        sensor_connected = 1;
+        output_LoRa = getPacket();
+        
+        sensor_connected = checkConnection(sensor_connected, output_LoRa);
       }
+      
       if(!sensor_connected) {
         delay(random(send_interval/10));
       }
@@ -74,16 +68,7 @@ void loop() {
   // send unit number for confirmation
   Serial.print("Sending Unit Confirmation... ms ");
   Serial.println(millis());
-  startTime = millis();        // time of last packet send
-  while(millis() - startTime < (send_interval*2)) {
-    LoRa.beginPacket();
-    LoRa.print(output_LoRa);
-    LoRa.endPacket();
-    delay(send_interval/random(100));
-  }
-  Serial.print(output_LoRa);
-  Serial.print(" Sent. ms ");
-  Serial.println(millis());
+  sendID_unit(output_LoRa);
 
   Serial.println("Done with task.");
   Serial.println();
@@ -100,4 +85,34 @@ void sendFREE() {
     LoRa.endPacket();
     delay(random(send_interval/10));
   }
+}
+
+String getPacket() {
+  String output_LoRa = "";
+  while (LoRa.available()) {
+    // read packet
+    output_LoRa = output_LoRa+(char)LoRa.read();
+  }
+  return(output_LoRa);
+}
+
+bool checkConnection(bool sensor_connected, String output_LoRa) {
+  if((output_LoRa.substring(0,9) =="SensorID:") & (output_LoRa.substring(9,10) ==String(node_number))) {
+    Serial.println(output_LoRa);
+    sensor_connected = 1;
+  }
+  return(sensor_connected);
+}
+
+void sendID_unit(String output_LoRa) {
+  long startTime = millis();        // time of last packet send
+  while(millis() - startTime < (send_interval*2)) {
+    LoRa.beginPacket();
+    LoRa.print(output_LoRa);
+    LoRa.endPacket();
+    delay(send_interval/random(100));
+  }
+  Serial.print(output_LoRa);
+  Serial.print(" Sent. ms ");
+  Serial.println(millis());
 }
