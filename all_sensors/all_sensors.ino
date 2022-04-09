@@ -307,7 +307,7 @@ void loop()
     for(i = 0; i < soil_mosit_probe_number; i++) {
       checksum = checksum + data_soil_moist[trans_position][i];
     }
-    checksum = checksum + data_battery[j];
+    checksum = checksum + data_battery[trans_position];
     
     checksum = checksum + data_time[trans_position][0];
     checksum = checksum + data_time[trans_position][1];
