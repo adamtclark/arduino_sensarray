@@ -18,7 +18,7 @@ unsigned const int soil_temp_probe_number = 2;
 unsigned const int soil_mosit_probe_number = 2;
 
 unsigned const int nrecords = 10; // number of fake records
-unsigned int trans_position = nrecords; // last record transmitted - "nrecords" indicates that no data have been sent yet
+int trans_position = nrecords; // last record transmitted - "nrecords" indicates that no data have been sent yet
 unsigned int samp_position = nrecords-1; // position in data array
 
 int data_air_temp[nrecords][air_probe_number];
@@ -34,7 +34,7 @@ int data_rtc_temp[nrecords];
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial);
+  //while (!Serial);
 
   Serial.println("LoRa Sensor");
 
@@ -104,6 +104,7 @@ void loop() {
   // send data
   bool node_connected = 0; // no sensor connected yet
   int n = 0;
+  long startTime;
   unsigned int tmp_trans_position; // temporary position for sending data
 
   //TODO: before begin, check whether trans_position == samp_position
@@ -163,16 +164,27 @@ void loop() {
       while(!signal_received & n < numtries) {
         Serial.print("Sending Data. ms ");
         Serial.println(millis());
-        sendData_fun(tmp_trans_position);
+        
+        startTime = millis();        // time of last packet send
+        while((millis() - startTime) < (send_interval)) { // send for send_interval milliseconds
+          delay(random(send_interval/10));
+          sendData_fun(tmp_trans_position);
+        }
     
         Serial.print("Checking Data. ms ");
         Serial.println(millis());
-        signal_received = checkData(signal_received);
+        startTime = millis();        // time of last packet send
+        while((millis() - startTime) < (2*send_interval)) { // receive for 2*send_interval milliseconds
+          if(signal_received == 0) { // only run if signal not yet checked
+            delay(random(send_interval/10));
+            signal_received = checkData(signal_received);
+          }
+        }
+        delay(random(send_interval/10));
     
         if(!signal_received) {
           Serial.print("Sending Failed. ms ");
           Serial.println(millis());
-          delay(random(send_interval/10));
           n++;
         }
     
@@ -197,7 +209,11 @@ void loop() {
     Serial.println(millis());
   }
 
-  sendDone(); // Send message that sending is done
+  startTime = millis();        // time of last packet send
+  while(millis() - startTime < send_interval) { // send Done signal for send_interval milliseconds
+    sendDone(); // Send message that sending is done
+    delay(random(send_interval/10));
+  }
 
   if(!node_connected | !all_signals_received) {
     // transfer failed - go to sleep and try again
@@ -312,65 +328,58 @@ long checksum_fun(int trans_position) {
 
 void sendData_fun(int trans_position) {
   long checksum_out = checksum_fun(trans_position);  
-  long startTime = millis();        // time of last packet send
-  while(millis() - startTime < send_interval) {
-    LoRa.beginPacket();
-    //int tmpV;
-    //uint8_t* tmpP;
-    for(i = 0; i < air_probe_number; i++) {
-      //tmpV = data_air_temp[trans_position][i];
-      //tmpP = (uint8_t*)tmpV;
-      //LoRa.write(tmpP, 2);
-      LoRa.write((uint8_t *)&(data_air_temp[trans_position][i]), 2);
-    }
-    for(i = 0; i < air_probe_number; i++) {
-      LoRa.write((uint8_t*)&(data_air_humid[trans_position][i]), 2);
-    }
-
-    for(i = 0; i < soil_temp_probe_number; i++) {
-      LoRa.write((uint8_t*)&(data_soil_temp[trans_position][i]), 2);
-    }
-    for(i = 0; i < soil_mosit_probe_number; i++) {
-      LoRa.write((uint8_t*)&(data_soil_moist[trans_position][i]), 2);
-    }
-    LoRa.write((uint8_t*)&(data_battery[trans_position]), 2);
-    for(i = 0; i < 4; i++) {
-      LoRa.write((uint8_t*)&(data_time[trans_position][i]), 2);
-    }
-    LoRa.write((uint8_t*)&(data_rtc_temp[trans_position]), 2);
-    LoRa.write((uint8_t*)&(unit_number), 2);
-    LoRa.write((uint8_t*)&(checksum_out), 4);
-    
-    LoRa.endPacket();
-    delay(send_interval/random(10));
+  LoRa.beginPacket();
+  LoRa.write((uint8_t *)&(trans_position), 2);
+  //int tmpV;
+  //uint8_t* tmpP;
+  for(i = 0; i < air_probe_number; i++) {
+    //tmpV = data_air_temp[trans_position][i];
+    //tmpP = (uint8_t*)tmpV;
+    //LoRa.write(tmpP, 2);
+    LoRa.write((uint8_t *)&(data_air_temp[trans_position][i]), 2);
   }
+  for(i = 0; i < air_probe_number; i++) {
+    LoRa.write((uint8_t*)&(data_air_humid[trans_position][i]), 2);
+  }
+
+  for(i = 0; i < soil_temp_probe_number; i++) {
+    LoRa.write((uint8_t*)&(data_soil_temp[trans_position][i]), 2);
+  }
+  for(i = 0; i < soil_mosit_probe_number; i++) {
+    LoRa.write((uint8_t*)&(data_soil_moist[trans_position][i]), 2);
+  }
+  LoRa.write((uint8_t*)&(data_battery[trans_position]), 2);
+  for(i = 0; i < 4; i++) {
+    LoRa.write((uint8_t*)&(data_time[trans_position][i]), 2);
+  }
+  LoRa.write((uint8_t*)&(data_rtc_temp[trans_position]), 2);
+  LoRa.write((uint8_t*)&(unit_number), 2);
+  LoRa.write((uint8_t*)&(checksum_out), 4);
+  
+  LoRa.endPacket();
+  
   Serial.print("Data Sent. ms ");
   Serial.println(millis());
 }
 
 bool checkData(bool signal_received) {
-  int m = 0;
-  while(!signal_received & (m < numtries)) {
-    int packetSize = LoRa.parsePacket();
-    if (packetSize) {
-      // read packet
-      String output_LoRa = "";
-      while (LoRa.available()) {
-        output_LoRa = output_LoRa+(char)LoRa.read();
-      }
-      Serial.print("Output is: ");
-      Serial.print(output_LoRa);
-      Serial.print(". ms ");
-      Serial.println(millis());
-      
-      if(output_LoRa == "Success") {
-        Serial.print("Data successfully checked. ms ");
-        Serial.println(millis());
-        signal_received = 1;
-      }
+  int packetSize = LoRa.parsePacket();
+  if (packetSize) {
+    // read packet
+    String output_LoRa = "";
+    while (LoRa.available()) {
+      output_LoRa = output_LoRa+(char)LoRa.read();
     }
-    delay(random(send_interval/10));
-    m++;
+    Serial.print("Output is: ");
+    Serial.print(output_LoRa);
+    Serial.print(". ms ");
+    Serial.println(millis());
+    
+    if(output_LoRa == "Success") {
+      Serial.print("Data successfully checked. ms ");
+      Serial.println(millis());
+      signal_received = 1;
+    }
   }
   return(signal_received);
 }
@@ -378,13 +387,10 @@ bool checkData(bool signal_received) {
 
 void sendDone() {
   int catch_done = 9999; // variable for signalling that data has all been sent
-  long startTime = millis();        // time of last packet send
-  while(millis() - startTime < send_interval) {
-    LoRa.beginPacket();
-    LoRa.write((uint8_t*)&(catch_done), 2);
-    LoRa.endPacket();
-    delay(send_interval/random(100));
-  }
+  LoRa.beginPacket();
+  LoRa.write((uint8_t*)&(catch_done), 2);
+  LoRa.endPacket();
+
   Serial.print("Sending Done. ms ");
   Serial.println(millis());
 }

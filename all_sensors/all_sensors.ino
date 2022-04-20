@@ -65,7 +65,7 @@ unsigned int data_time[nrecords][4];
 int data_rtc_temp[nrecords];
 
 unsigned int samp_position = 0;  // position in data array
-unsigned int trans_position = nrecords; // last record transmitted - "nrecords" indicates that no data have been sent yet
+int trans_position = nrecords; // last record transmitted - "nrecords" indicates that no data have been sent yet
 unsigned long total_samples = 0; // counter tracking total number of samples sent
 
 
