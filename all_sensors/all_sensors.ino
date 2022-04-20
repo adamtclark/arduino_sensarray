@@ -54,7 +54,7 @@ int rtc_temp;
 unsigned int battery_voltage;
 
 // set up arrays for data storage
-const int nrecords = 150; // number of local records to save
+const int nrecords = 150; // number of local records to save (must be >=2)
 
 int data_air_temp[nrecords][air_probe_number];
 unsigned int data_air_humid[nrecords][air_probe_number];
@@ -64,9 +64,9 @@ unsigned int data_battery[nrecords];
 unsigned int data_time[nrecords][4];
 int data_rtc_temp[nrecords];
 
-unsigned int samp_position = 0; // position in data array
-unsigned int trans_position = 0; // last record transmitted
-unsigned int total_samples = 0;
+unsigned int samp_position = 0;  // position in data array
+unsigned int trans_position = nrecords; // last record transmitted - "nrecords" indicates that no data have been sent yet
+unsigned long total_samples = 0; // counter tracking total number of samples sent
 
 
 // LoRa Settings
@@ -222,9 +222,13 @@ void loop()
   Serial.println("printing results...");
   if(Serial) {
     if(total_samples > samp_position) {
+      // we have already gone around the circular array at least once.
+      // read out all records
       jmax = nrecords;
     }
     else {
+      // we have not yet gone around the circular array at least once.
+      // read out only to samp_position.
       jmax = samp_position;
     }
     Serial.print("Max samples: ");

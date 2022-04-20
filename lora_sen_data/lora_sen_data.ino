@@ -1,6 +1,7 @@
 #include <SPI.h>
 #include <LoRa.h>
 unsigned int i;
+unsigned int j;
 const int node_number = 1; // unique ID for the node for this unit
 const int unit_number = 1; // unique ID for this unit (<=999)
 const int scaling_factor = 1E3; // scaling factor for separating unit and node IDs
@@ -16,16 +17,17 @@ unsigned const int air_probe_number = 2;
 unsigned const int soil_temp_probe_number = 2;
 unsigned const int soil_mosit_probe_number = 2;
 
-unsigned const int trans_position = 0; // dummy for tracking position in final script
-unsigned const int num_records = 1; // number of fake records
+unsigned const int nrecords = 10; // number of fake records
+unsigned int trans_position = nrecords; // last record transmitted - "nrecords" indicates that no data have been sent yet
+unsigned int samp_position = nrecords-1; // position in data array
 
-int data_air_temp[num_records][air_probe_number];
-int data_air_humid[num_records][air_probe_number];
-int data_soil_temp[num_records][soil_temp_probe_number];
-int data_soil_moist[num_records][soil_mosit_probe_number];
-int data_battery[num_records];
-int data_time[num_records][4];
-int data_rtc_temp[num_records];
+int data_air_temp[nrecords][air_probe_number];
+int data_air_humid[nrecords][air_probe_number];
+int data_soil_temp[nrecords][soil_temp_probe_number];
+int data_soil_moist[nrecords][soil_mosit_probe_number];
+int data_battery[nrecords];
+int data_time[nrecords][4];
+int data_rtc_temp[nrecords];
 
 
 
@@ -44,63 +46,71 @@ void setup() {
 
 void loop() {
   // make fake data
-  for(i = 0; i < air_probe_number; i++) {
-    data_air_temp[trans_position][i] = random(2000, 3000);
-    data_air_humid[trans_position][i] = random(1400, 2000);
-  }
-  for(i = 0; i < soil_temp_probe_number; i++) {
-    data_soil_temp[trans_position][i] = random(2000, 3000);
-  }
-  for(i = 0; i < soil_mosit_probe_number; i++) {
-    data_soil_moist[trans_position][i] = random(400, 1200);
-  }
-  data_battery[trans_position] = random(100, 300);
-  
-  data_time[trans_position][0] = random(1, 12);
-  data_time[trans_position][1] = random(1, 31);
-  data_time[trans_position][2] = random(0, 23);
-  data_time[trans_position][3] = random(0, 59);
-  data_rtc_temp[trans_position] = random(2000, 3000);
+  for(j = 0; j < nrecords; j++) {
+    for(i = 0; i < air_probe_number; i++) {
+      data_air_temp[j][i] = random(2000, 3000);
+      data_air_humid[j][i] = random(1400, 2000);
+    }
+    for(i = 0; i < soil_temp_probe_number; i++) {
+      data_soil_temp[j][i] = random(2000, 3000);
+    }
+    for(i = 0; i < soil_mosit_probe_number; i++) {
+      data_soil_moist[j][i] = random(400, 1200);
+    }
+    data_battery[j] = random(100, 300);
+    
+    data_time[j][0] = random(1, 12);
+    data_time[j][1] = random(1, 31);
+    data_time[j][2] = random(0, 23);
+    data_time[j][3] = random(0, 59);
+    data_rtc_temp[j] = random(2000, 3000);
 
-
-  long tmp = checksum_fun(trans_position);
-  Serial.println("Air Temp: ");
-  for(i = 0; i < air_probe_number; i++) {
-    Serial.println(data_air_temp[trans_position][i]);
+    Serial.print("Trans position: ");
+    Serial.println(j);
+    
+    Serial.println("Air Temp: ");
+    for(i = 0; i < air_probe_number; i++) {
+      Serial.println(data_air_temp[j][i]);
+    }
+    Serial.println("Air Humid: ");
+    for(i = 0; i < air_probe_number; i++) {
+      Serial.println(data_air_humid[j][i]);
+    }
+    Serial.println("Soil Temp: ");
+    for(i = 0; i < soil_temp_probe_number; i++) {
+      Serial.println(data_soil_temp[j][i]);
+    }
+    Serial.println("Soil Moist: ");
+    for(i = 0; i < soil_mosit_probe_number; i++) {
+      Serial.println(data_soil_moist[j][i]);
+    }
+    Serial.print("Battery: ");
+    Serial.println(data_battery[j]);
+    Serial.println("Time: ");
+    for(i = 0; i < 4; i++) {
+      Serial.println(data_time[j][i]);
+    }
+    Serial.print("RTC Temp: ");
+    Serial.println(data_rtc_temp[j]);
+    Serial.print("Unit: ");
+    Serial.println(unit_number);
+    Serial.print("Check Sum: ");
+    long tmp = checksum_fun(j);
+    Serial.println(tmp);
   }
-  Serial.println("Air Humid: ");
-  for(i = 0; i < air_probe_number; i++) {
-    Serial.println(data_air_humid[trans_position][i]);
-  }
-  Serial.println("Soil Temp: ");
-  for(i = 0; i < soil_temp_probe_number; i++) {
-    Serial.println(data_soil_temp[trans_position][i]);
-  }
-  Serial.println("Soil Moist: ");
-  for(i = 0; i < soil_mosit_probe_number; i++) {
-    Serial.println(data_soil_moist[trans_position][i]);
-  }
-  Serial.print("Battery: ");
-  Serial.println(data_battery[trans_position]);
-  Serial.println("Time: ");
-  for(i = 0; i < 4; i++) {
-    Serial.println(data_time[trans_position][i]);
-  }
-  Serial.print("RTC Temp: ");
-  Serial.println(data_rtc_temp[trans_position]);
-  Serial.print("Unit: ");
-  Serial.println(unit_number);
-  Serial.print("Check Sum: ");
-  Serial.println(tmp);
   
 
   //delay(2000);
   // send data
   bool node_connected = 0; // no sensor connected yet
   int n = 0;
+  unsigned int tmp_trans_position; // temporary position for sending data
+
+  //TODO: before begin, check whether trans_position == samp_position
+  
   Serial.print("Waiting for FREE... ms ");
   Serial.println(millis());
-  while(!node_connected) {
+  while(!node_connected & (n < numtries)) {
     int packetSize = LoRa.parsePacket();
     if (packetSize) {
       Serial.print("Signal Detected. ms ");
@@ -120,51 +130,91 @@ void loop() {
         node_connected = checkID();
       }
     }
-    delay(random(send_interval/10));
+    else {
+      delay(random(send_interval/10));
+    }
 
     n++;
-    if((n == numtries) & !node_connected) {
-      LoRa.sleep();
-      Serial.println("Sleeping...");
-      Serial.println();
-      delay(random(send_interval) + 2*send_interval); // wait 2-3 send_intervals
-      Serial.println("Waiting for FREE...");
+  }
+
+  bool all_signals_received = 0; // has transmission caught up to sampling?
+  if(node_connected) {
+    // connection successful - send data
+
+    Serial.print("Sample position ");
+    Serial.print(samp_position);
+    Serial.print(". ms ");
+    Serial.println(millis());
+    n = 0; // start counter for maximum tries
+    
+    while(!all_signals_received  & n < numtries) {
+      bool signal_received = 0;
+      if(trans_position == nrecords) { // no records have been sent yet
+        tmp_trans_position = 0;
+      }
+      else {
+        tmp_trans_position = ((trans_position+1) % nrecords); // record to attempt to send
+      }
+      
+      Serial.print("Transmitting record number ");
+      Serial.print(tmp_trans_position);
+      Serial.print(". ms ");
+      Serial.println(millis());
+      while(!signal_received & n < numtries) {
+        Serial.print("Sending Data. ms ");
+        Serial.println(millis());
+        sendData_fun(tmp_trans_position);
+    
+        Serial.print("Checking Data. ms ");
+        Serial.println(millis());
+        signal_received = checkData(signal_received);
+    
+        if(!signal_received) {
+          Serial.print("Sending Failed. ms ");
+          Serial.println(millis());
+          delay(random(send_interval/10));
+          n++;
+        }
+    
+        if(n >= numtries) {
+          Serial.print("Sending Failed - ending attempts. ms ");
+          Serial.println(millis());
+        }
+      }
+      if(signal_received) {
+        n = 0; // reset try counter
+        trans_position = tmp_trans_position; // increment transfer counter
+        if(trans_position == samp_position) {
+          all_signals_received = 1;
+          Serial.print("All Records Successfully Received: ms ");
+          Serial.println(millis());
+        }
+      }
     }
-    n = n % numtries;
+  }
+  else {
+    Serial.print("Connection Failed - ending attempts. ms ");
+    Serial.println(millis());
+  }
+
+  sendDone(); // Send message that sending is done
+
+  if(!node_connected | !all_signals_received) {
+    // transfer failed - go to sleep and try again
+    LoRa.sleep();
+    Serial.println("Connection and/or Sending Failed. Sleeping...");
+    Serial.println();
+    delay(random(send_interval) + 2*send_interval); // wait 2-3 send_intervals
   }
 
   
-  // connection successful - send data
-  bool signal_received = 0;
-  n = 0;
-  while(!signal_received & n < numtries) {
-    Serial.print("Sending Data. ms ");
-    Serial.println(millis());
-    sendData_fun(trans_position);
-
-    Serial.print("Checking Data. ms ");
-    Serial.println(millis());
-    signal_received = checkData(signal_received);
-
-    if(!signal_received) {
-      Serial.print("Sending Failed. ms ");
-      Serial.println(millis());
-      delay(random(send_interval/10));
-      n++;
-    }
-
-    if(n >= numtries) {
-      Serial.print("Sending Failed - ending attempts. ms ");
-      Serial.println(millis());
-    }
-  }
-
-  
-  Serial.println("Done with task.");
+  Serial.println("End of task.");
   Serial.println();
   LoRa.sleep();
+  delay(random(send_interval) + 2*send_interval); // wait 2-3 send_intervals
+  
   // TODO: Still need to add in a break-out if no connection is made
-  while(1);
+  //while(1);
 }
 
 
@@ -323,4 +373,18 @@ bool checkData(bool signal_received) {
     m++;
   }
   return(signal_received);
+}
+
+
+void sendDone() {
+  int catch_done = 9999; // variable for signalling that data has all been sent
+  long startTime = millis();        // time of last packet send
+  while(millis() - startTime < send_interval) {
+    LoRa.beginPacket();
+    LoRa.write((uint8_t*)&(catch_done), 2);
+    LoRa.endPacket();
+    delay(send_interval/random(100));
+  }
+  Serial.print("Sending Done. ms ");
+  Serial.println(millis());
 }
