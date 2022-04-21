@@ -108,7 +108,8 @@ void loop() {
   unsigned int tmp_trans_position; // temporary position for sending data
 
   //TODO: before begin, check whether trans_position == samp_position
-  
+
+  // Connect to Node
   Serial.print("Waiting for FREE... ms ");
   Serial.println(millis());
   while(!node_connected & (n < numtries)) {
@@ -116,19 +117,30 @@ void loop() {
     if (packetSize) {
       Serial.print("Signal Detected. ms ");
       Serial.println(millis());
-      String output_LoRa = getPacket();
+
+      // TIME 0: FREE signal obtained
+      String output_LoRa = getFREE();
       
       if(output_LoRa == "FREE") {
         Serial.print("Node Detected. ID ");
         Serial.print(output_LoRa);
         Serial.print(" . ms ");
         Serial.println(millis());
-      
+
+        // note - this must be random in case multiple sensors send their signals at once
+        // TODO: Switch to 1-1.5 seconds?
         delay(random(0.4*send_interval) + 0.8*send_interval); // wait for 0.8 to 1.2 send_interval milliseconds
-      
-        sendID();
-        
-        node_connected = checkID();
+
+        // TIME 1: ID Sent
+        // TODO: Rewrite to FORCE WAIT until end of interval
+        sendID(); // lasts 1 send interval
+
+        // TIME 2: Check ID
+        // TODO: Add time limit to check ID? e.g. two send_intervals?
+        // TODO: Rewrite to FORCE WAIT until end of interval
+        // TODO: Add 1 send_interval wait to re-align with receiver?
+        // TODO: Change wait time to 1/5 send intervals to help systems re-align faster?
+        node_connected = checkID(); // lasts 2 send intervals?
       }
     }
     else {
@@ -138,10 +150,11 @@ void loop() {
     n++;
   }
 
+
+  // Connection successful - send data
   bool all_signals_received = 0; // has transmission caught up to sampling?
   if(node_connected) {
     // connection successful - send data
-
     Serial.print("Sample position ");
     Serial.print(samp_position);
     Serial.print(". ms ");
@@ -164,23 +177,24 @@ void loop() {
       while(!signal_received & n < numtries) {
         Serial.print("Sending Data. ms ");
         Serial.println(millis());
-        
+
+        // TIME 0: Send Data
         startTime = millis();        // time of last packet send
         while((millis() - startTime) < (send_interval)) { // send for send_interval milliseconds
-          delay(random(send_interval/10));
           sendData_fun(tmp_trans_position);
+          delay(random(send_interval/10));
         }
-    
+
+        // TIME 1: Check Data
         Serial.print("Checking Data. ms ");
         Serial.println(millis());
         startTime = millis();        // time of last packet send
         while((millis() - startTime) < (2*send_interval)) { // receive for 2*send_interval milliseconds
           if(signal_received == 0) { // only run if signal not yet checked
-            delay(random(send_interval/10));
             signal_received = checkData(signal_received);
+            delay(random(send_interval/10));
           }
         }
-        delay(random(send_interval/10));
     
         if(!signal_received) {
           Serial.print("Sending Failed. ms ");
@@ -192,6 +206,12 @@ void loop() {
           Serial.print("Sending Failed - ending attempts. ms ");
           Serial.println(millis());
         }
+
+        // note on timing: worst case, both sensors are receiving and sending at the same time
+        // need a shift of 1 send_interval to fix this on average
+        // thus, the average waiting intervals here must be longer, and should be different from
+        // those in the reciever code
+        delay(random(send_interval/5));
       }
       if(signal_received) {
         n = 0; // reset try counter
@@ -210,7 +230,7 @@ void loop() {
   }
 
   startTime = millis();        // time of last packet send
-  while(millis() - startTime < send_interval) { // send Done signal for send_interval milliseconds
+  while(millis() - startTime < 2*send_interval) { // send Done signal for 2*send_interval milliseconds
     sendDone(); // Send message that sending is done
     delay(random(send_interval/10));
   }
@@ -244,7 +264,7 @@ void loop() {
 
 
 
-String getPacket() {
+String getFREE() {
   // read packet
   String output_LoRa = "";
   while (LoRa.available()) {
@@ -259,7 +279,7 @@ void sendID() {
     LoRa.beginPacket();
     LoRa.print(sensorID);
     LoRa.endPacket();
-    delay(send_interval/random(100));
+    delay(send_interval/random(100)); // TODO: switch to 10?
   }
   Serial.print(sensorID);
   Serial.print(" Sent. ms ");

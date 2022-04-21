@@ -52,18 +52,23 @@ void loop() {
 
   long startTime;
   String output_LoRa;
-  
+
+  // Connect to Sensor
   // Broadcast that the node is free to recieve
   bool sensor_connected = 0;
+  // TODO: add in break condition in case sensor is not connected?
   while(!sensor_connected) {
+    // TIME 0: FREE Sent
     Serial.print("Sending FREE... ms ");
     Serial.println(millis());
-    sendFREE();
+    sendFREE(); // lasts 1 send_interval
     
     // Listen for unit number
     Serial.print("Listening for Unit... ms ");
     Serial.println(millis());
     startTime = millis();        // time of last packet send
+    // TIME 1: Listen for Sensor ID
+    // TODO: Rewrite to FORCE WAIT until end of interval
     while(!sensor_connected & (millis() - startTime < send_interval*2)) { // receive for 2*send_interval milliseconds
       packetSize = LoRa.parsePacket();
       if (packetSize) {
@@ -87,95 +92,104 @@ void loop() {
     }
   }
 
-  // send unit number for confirmation
-  Serial.print("Sending Unit Confirmation... ms ");
-  Serial.println(millis());
-  sendID_unit(output_LoRa);
-
+  if(sensor_connected) {
+    // send unit number for confirmation
+    Serial.print("Sending Unit Confirmation... ms ");
+    Serial.println(millis());
+    // TIME 3: Send Unit ID
+    // TODO: Rewrite to FORCE WAIT until end of interval
+    sendID_unit(output_LoRa);
   
-  // connection successful - get data
-  int trans_position = 0; // position in which to save next incoming record - always starts at beginning of array
-  bool all_records_received = 0; // have all records been received?
-
-  int old_position = nrecords; // set initial value for tracking memory position of transmitted data on local sensor node
-  while((trans_position < nrecords) & (!all_records_received) & (n < numtries)) { // loop over all records
-    bool signal_received = 0;
-    n = 0;
-    while(!signal_received & n < numtries) { // get a single record
-      catch_done = 0; // variable for catching when all records have been sent
-      Serial.print("Getting Position: ");
-      Serial.print(trans_position);
-      Serial.print(". ms ");
-      Serial.println(millis());
-      
-      packetSize = 0;
-      // parse data
-      startTime = millis();        // time of last packet send
-      while((millis() - startTime) < (2*send_interval)) { // receive for 2*send_interval milliseconds
-        if(catch_done == 0) { // only run if transmission has not yet occurred
-          packetSize = LoRa.parsePacket();
-          //Serial.print("Packet Size: ");
-          //Serial.println(packetSize);
-        }
-      
-        if (packetSize) {
-          if(catch_done == 0) { // only run if transmission has not yet occurred
-            catch_done = getData_fun(trans_position, old_position);
-            if((catch_done != 0) & (catch_done != 9999)) {
-              old_position = catch_done; // updated saved position
-            }
-          }
-          // else wait until two full seconds are elapsed
-        }
-        delay(random(send_interval/10));
-      }
-      if(packetSize) {
-        if(catch_done == 9999) { // sending is done
-          all_records_received = 1;
-          break;
-        }
+    // Connection successful - get data
+    int trans_position = 0; // position in which to save next incoming record - always starts at beginning of array
+    bool all_records_received = 0; // have all records been received?
+  
+    int old_position = nrecords; // set initial value for tracking memory position of transmitted data on local sensor node
+    while((trans_position < nrecords) & (!all_records_received) & (n < numtries)) { // loop over all records
+      bool signal_received = 0;
+      n = 0;
+      while(!signal_received & n < numtries) { // get a single record
+        catch_done = 0; // variable for catching when all records have been sent
+        Serial.print("Getting Position: ");
+        Serial.print(trans_position);
+        Serial.print(". ms ");
+        Serial.println(millis());
         
-        // check checksum
-        local_checksum_out = checksum_fun(trans_position);
-
-        Serial.print("Record number: ");
-        Serial.println(old_position);
-        print_received_record(trans_position);
-  
-        // send confirmation
-        if(local_checksum_out == save_checksum_out[trans_position]) {
-          Serial.print("Checksum succeeded. ms ");
-          Serial.println(millis());
-
-          startTime = millis();        // time of last packet send
-          while((millis() - startTime) < (send_interval)) { // send for send_interval milliseconds
-            delay(random(send_interval/10));
-            sendSuccess();
+        packetSize = 0;
+        // TIME 0: Receive Data
+        // parse data
+        startTime = millis();        // time of last packet send
+        while((millis() - startTime) < (2*send_interval)) { // receive for 2*send_interval milliseconds
+          if(catch_done == 0) { // only run if transmission has not yet occurred
+            packetSize = LoRa.parsePacket();
+            //Serial.print("Packet Size: ");
+            //Serial.println(packetSize);
           }
-          signal_received = 1;
-          trans_position++; // proceed to next record
+        
+          if (packetSize) {
+            if(catch_done == 0) { // only run if transmission has not yet occurred
+              catch_done = getData_fun(trans_position, old_position);
+              if((catch_done != 0) & (catch_done != 9999)) {
+                old_position = catch_done; // updated saved position
+              }
+            }
+            // else wait until two full seconds are elapsed
+          }
+          delay(random(send_interval/10));
         }
-        else {
-          Serial.print("Checksum failed. ");
-          Serial.print(local_checksum_out);
-          Serial.print(" local vs. ");
-          Serial.print(save_checksum_out[trans_position]);
-          Serial.print(" incoming. ms ");
-          Serial.println(millis());
-          delay(send_interval); // wait send_interval milliseconds (to make up for lack of transmission)
-        }
-      }
-      n++;
-      delay(send_interval/random(10));
-    } // end single record loop
-    if(catch_done == 9999) { // sending is done
-      Serial.print("Finished Receiving All Records. ms ");
-      Serial.println(millis());
-      break;
-    }
-  } // end all records loop
+        if(packetSize) {
+          if(catch_done == 9999) { // sending is done
+            all_records_received = 1;
+            break;
+          }
+          
+          // check checksum
+          local_checksum_out = checksum_fun(trans_position);
+  
+          Serial.print("Record number: ");
+          Serial.println(old_position);
+          print_received_record(trans_position);
+    
+          // send confirmation
+          if(local_checksum_out == save_checksum_out[trans_position]) {
+            Serial.print("Checksum succeeded. ms ");
+            Serial.println(millis());
 
-  if(n >= numtries) {
+            // TIME 2: Send Confirmation
+            startTime = millis();        // time of last packet send
+            while((millis() - startTime) < (send_interval)) { // send for send_interval milliseconds
+              sendSuccess();
+              delay(random(send_interval/10));
+            }
+            signal_received = 1;
+            trans_position++; // proceed to next record
+          }
+          else {
+            Serial.print("Checksum failed. ");
+            Serial.print(local_checksum_out);
+            Serial.print(" local vs. ");
+            Serial.print(save_checksum_out[trans_position]);
+            Serial.print(" incoming. ms ");
+            Serial.println(millis());
+            delay(send_interval); // wait send_interval milliseconds (to make up for lack of transmission)
+          }
+        }
+        n++;
+  
+        // note on timing: worst case, both sensors are receiving and sending at the same time
+        // need a shift of 1 send_interval to fix this on average
+        // thus, the average waiting intervals here should be different from
+        // those in the sender code
+        delay(send_interval/random(10));
+      } // end single record loop
+      if(catch_done == 9999) { // sending is done
+        Serial.print("Finished Receiving All Records. ms ");
+        Serial.println(millis());
+        break;
+      }
+    } // end all records loop
+  }
+  if((!sensor_connected) < (n >= numtries)) {
     Serial.print("Receiving Failed - ending attempts. ms ");
     Serial.println(millis());
   }
