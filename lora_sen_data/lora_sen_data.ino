@@ -9,7 +9,7 @@ String sensorID = "SensorID:" + String(node_number*scaling_factor+unit_number);
 
 const int freq = 868E6;
 const int send_interval = 500;
-const int numtries = 50; // number of tries before taking a break
+const int numtries = 10; // number of tries before taking a break
 
 
 // fake data
@@ -17,7 +17,7 @@ unsigned const int air_probe_number = 2;
 unsigned const int soil_temp_probe_number = 2;
 unsigned const int soil_mosit_probe_number = 2;
 
-unsigned const int nrecords = 10; // number of fake records
+const int nrecords = 100; // number of fake records
 int trans_position = nrecords; // last record transmitted - "nrecords" indicates that no data have been sent yet
 unsigned int samp_position = nrecords-1; // position in data array
 
@@ -98,6 +98,9 @@ void loop() {
     long tmp = checksum_fun(j);
     Serial.println(tmp);
   }
+
+  // initialize at start of loop
+  trans_position = nrecords;
   
 
   //delay(2000);
@@ -105,7 +108,7 @@ void loop() {
   bool node_connected = 0; // no sensor connected yet
   int n = 0;
   long startTime;
-  unsigned int tmp_trans_position; // temporary position for sending data
+  int tmp_trans_position; // temporary position for sending data
 
   //TODO: before begin, check whether trans_position == samp_position
 
@@ -135,8 +138,8 @@ void loop() {
         // TIME 1-2: ID Sent
         sendID(); // lasts 1 send interval
 
-        // TIME 2-4: Check ID
-        node_connected = checkID(); // lasts 2 send intervals
+        // TIME 2-5: Check ID
+        node_connected = checkID(); // lasts 3 send intervals
       }
     }
     else {
@@ -210,7 +213,7 @@ void loop() {
       if(signal_received) {
         n = 0; // reset try counter
         trans_position = tmp_trans_position; // increment transfer counter
-        if(trans_position == samp_position) {
+        if(trans_position == (nrecords-1)) {
           all_signals_received = 1;
           Serial.print("All Records Successfully Received: ms ");
           Serial.println(millis());
@@ -223,10 +226,12 @@ void loop() {
     Serial.println(millis());
   }
 
-  startTime = millis();        // time of last packet send
-  while(millis() - startTime < 2*send_interval) { // send Done signal for 2*send_interval milliseconds
-    sendDone(); // Send message that sending is done
-    delay(random(send_interval/10));
+  if(node_connected) {
+    startTime = millis();        // time of last packet send
+    while(millis() - startTime < 2*send_interval) { // send Done signal for 2*send_interval milliseconds
+      sendDone(); // Send message that sending is done
+      delay(random(send_interval/10));
+    }
   }
 
   if(!node_connected | !all_signals_received) {
@@ -241,7 +246,7 @@ void loop() {
   Serial.println("End of task.");
   Serial.println();
   LoRa.sleep();
-  delay(random(send_interval) + 2*send_interval); // wait 2-3 send_intervals
+  delay(random(6000, 8000)); // wait 6-8 seconds
   
   // TODO: Still need to add in a break-out if no connection is made
   //while(1);
@@ -286,7 +291,7 @@ bool checkID() {
   Serial.println(millis());
 
   long startTime = millis();        // time of last packet send
-  while(millis() - startTime < (2*send_interval)) { // TODO: change to 3?
+  while(millis() - startTime < (3*send_interval)) {
     if(!node_connected) {
       int packetSize = LoRa.parsePacket();
       if (packetSize) {
@@ -344,7 +349,11 @@ long checksum_fun(int trans_position) {
 void sendData_fun(int trans_position) {
   long checksum_out = checksum_fun(trans_position);  
   LoRa.beginPacket();
-  LoRa.write((uint8_t *)&(trans_position), 2);
+  if(trans_position==0) {
+    LoRa.write((uint8_t *)&(nrecords), 2);
+  } else {
+    LoRa.write((uint8_t *)&(trans_position), 2);
+  }
   //int tmpV;
   //uint8_t* tmpP;
   for(i = 0; i < air_probe_number; i++) {

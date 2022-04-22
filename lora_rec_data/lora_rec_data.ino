@@ -9,10 +9,10 @@ const int scaling_factor = 1E3; // scaling factor for separating unit and node I
 int sensorID = node_number*scaling_factor+unit_number;
 
 const int send_interval = 500;
-const int numtries = 50; // number of tries before taking a break
+const int numtries = 10; // number of tries before taking a break
 
 // save data
-unsigned const int nrecords = 100; // number records
+const int nrecords = 100; // number records
 
 unsigned const int air_probe_number = 2;
 unsigned const int soil_temp_probe_number = 2;
@@ -95,8 +95,8 @@ void loop() {
     // send unit number for confirmation
     Serial.print("Sending Unit Confirmation... ms ");
     Serial.println(millis());
-    // TIME 3-4: Send Unit ID
-    sendID_unit(output_LoRa); // lasts 1 send_interval units
+    // TIME 3-5: Send Unit ID
+    sendID_unit(output_LoRa); // lasts 2 send_interval units
   
     // Connection successful - get data
     int trans_position = 0; // position in which to save next incoming record - always starts at beginning of array
@@ -128,7 +128,12 @@ void loop() {
             if(catch_done == 0) { // only run if transmission has not yet occurred
               catch_done = getData_fun(trans_position, old_position);
               if((catch_done != 0) & (catch_done != 9999)) {
-                old_position = catch_done; // updated saved position
+                if(catch_done==nrecords) {
+                  old_position = 0; // indicates that this is the first record sent
+                }
+                else {
+                  old_position = catch_done; // updated saved position
+                }
               }
             }
             // else wait until two full seconds are elapsed
@@ -149,7 +154,8 @@ void loop() {
           print_received_record(trans_position);
     
           // send confirmation
-          if(local_checksum_out == save_checksum_out[trans_position]) {
+          if((local_checksum_out == save_checksum_out[trans_position]) | (save_checksum_out[trans_position]==(-1))) {
+            // note: -1 is a signal that there has been a sensor-side error
             Serial.print("Checksum succeeded. ms ");
             Serial.println(millis());
 
@@ -160,7 +166,7 @@ void loop() {
               delay(random(send_interval/10));
             }
             signal_received = 1;
-            trans_position++; // proceed to next record
+            trans_position = (trans_position+1) % nrecords; // avoid buffer overflow
           }
           else {
             Serial.print("Checksum failed. ");
@@ -197,7 +203,7 @@ void loop() {
   Serial.println("End of task.");
   Serial.println();
   LoRa.sleep();
-  delay(random(2*send_interval) + send_interval); // wait 2-3 send_intervals
+  delay(random(500, 1500)); // wait 0.5-1.5 seconds
   //while(1);
 }
 
@@ -244,7 +250,7 @@ bool checkConnection(bool sensor_connected, String output_LoRa) {
 
 void sendID_unit(String output_LoRa) {
   long startTime = millis();        // time of last packet send
-  while(millis() - startTime < (send_interval)) { // TODO: change to 2?
+  while(millis() - startTime < (2*send_interval)) {
     LoRa.beginPacket();
     LoRa.print(output_LoRa);
     LoRa.endPacket();
@@ -269,17 +275,14 @@ int getData_fun(int trans_position, int old_position) {
     }
     new_position = buf[0] | (buf[1] << 8);
 
+    Serial.print("New position from sensor: ");
+    Serial.println(new_position);
+
     if(new_position == 9999) { // sending is done
       catch_done = 9999;
       break;
     }
-    else if(new_position == old_position) { // this is a repeat
-      Serial.println("Error: Old position equals new position");
-      break;
-    }
-    else {
-      catch_done = new_position; // save new position
-    }
+    catch_done = new_position; // save new position
     
     // air temp
     for(i = 0; i < air_probe_number; i++) {
