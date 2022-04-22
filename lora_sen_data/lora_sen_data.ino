@@ -112,15 +112,16 @@ void loop() {
   // Connect to Node
   Serial.print("Waiting for FREE... ms ");
   Serial.println(millis());
-  while(!node_connected & (n < numtries)) {
+  String output_LoRa = "";
+  startTime = millis();        // time of last packet send
+  while(!node_connected & ((millis() - startTime) < (2*send_interval))) { // receive for 2 send intervals, or until signal received
     int packetSize = LoRa.parsePacket();
     if (packetSize) {
       Serial.print("Signal Detected. ms ");
       Serial.println(millis());
 
-      // TIME 0: FREE signal obtained
-      String output_LoRa = getFREE();
-      
+      // TIME 0-?: FREE signal obtained
+      output_LoRa = getFREE();
       if(output_LoRa == "FREE") {
         Serial.print("Node Detected. ID ");
         Serial.print(output_LoRa);
@@ -131,23 +132,16 @@ void loop() {
         // TODO: Switch to 1-1.5 seconds?
         delay(random(0.4*send_interval) + 0.8*send_interval); // wait for 0.8 to 1.2 send_interval milliseconds
 
-        // TIME 1: ID Sent
-        // TODO: Rewrite to FORCE WAIT until end of interval
+        // TIME 1-2: ID Sent
         sendID(); // lasts 1 send interval
 
-        // TIME 2: Check ID
-        // TODO: Add time limit to check ID? e.g. two send_intervals?
-        // TODO: Rewrite to FORCE WAIT until end of interval
-        // TODO: Add 1 send_interval wait to re-align with receiver?
-        // TODO: Change wait time to 1/5 send intervals to help systems re-align faster?
-        node_connected = checkID(); // lasts 2 send intervals?
+        // TIME 2-4: Check ID
+        node_connected = checkID(); // lasts 2 send intervals
       }
     }
     else {
-      delay(random(send_interval/10));
+      delay(random(send_interval/5));
     }
-
-    n++;
   }
 
 
@@ -291,30 +285,31 @@ bool checkID() {
   Serial.print("Checking Unit ID: ms ");
   Serial.println(millis());
 
-  int m = 0;
-  while(!node_connected & (m < numtries)) {
-    int packetSize = LoRa.parsePacket();
-    if (packetSize) {
-      // read packet
-      String output_LoRa = "";
-      while (LoRa.available()) {
-        output_LoRa = output_LoRa+(char)LoRa.read();
-      }
-      Serial.print("Output is: ");
-      Serial.print(output_LoRa);
-      Serial.print(". ms ");
-      Serial.println(millis());
-      
-      if(sensorID ==output_LoRa) {
-        Serial.print("Successfully coupled. Node ");
+  long startTime = millis();        // time of last packet send
+  while(millis() - startTime < (2*send_interval)) { // TODO: change to 3?
+    if(!node_connected) {
+      int packetSize = LoRa.parsePacket();
+      if (packetSize) {
+        // read packet
+        String output_LoRa = "";
+        while (LoRa.available()) {
+          output_LoRa = output_LoRa+(char)LoRa.read();
+        }
+        Serial.print("Output is: ");
         Serial.print(output_LoRa);
-        Serial.print(" . ms ");
+        Serial.print(". ms ");
         Serial.println(millis());
-        node_connected = 1;
+        
+        if(sensorID ==output_LoRa) {
+          Serial.print("Successfully coupled. Node ");
+          Serial.print(output_LoRa);
+          Serial.print(" . ms ");
+          Serial.println(millis());
+          node_connected = 1;
+        }
       }
     }
     delay(random(send_interval/10));
-    m++;
   }
 
   Serial.println("Checking Unit ID done.");

@@ -58,7 +58,7 @@ void loop() {
   bool sensor_connected = 0;
   // TODO: add in break condition in case sensor is not connected?
   while(!sensor_connected) {
-    // TIME 0: FREE Sent
+    // TIME 0-1: FREE Sent
     Serial.print("Sending FREE... ms ");
     Serial.println(millis());
     sendFREE(); // lasts 1 send_interval
@@ -67,14 +67,13 @@ void loop() {
     Serial.print("Listening for Unit... ms ");
     Serial.println(millis());
     startTime = millis();        // time of last packet send
-    // TIME 1: Listen for Sensor ID
-    // TODO: Rewrite to FORCE WAIT until end of interval
+    // TIME 1-3: Listen for Sensor ID
     while(!sensor_connected & (millis() - startTime < send_interval*2)) { // receive for 2*send_interval milliseconds
       packetSize = LoRa.parsePacket();
       if (packetSize) {
         Serial.print("Unit Detected. ms ");
         Serial.println(millis());
-        output_LoRa = getPacket();
+        output_LoRa = getConfirmation();
         sensor_connected = checkConnection(sensor_connected, output_LoRa);
       }
       
@@ -96,9 +95,8 @@ void loop() {
     // send unit number for confirmation
     Serial.print("Sending Unit Confirmation... ms ");
     Serial.println(millis());
-    // TIME 3: Send Unit ID
-    // TODO: Rewrite to FORCE WAIT until end of interval
-    sendID_unit(output_LoRa);
+    // TIME 3-4: Send Unit ID
+    sendID_unit(output_LoRa); // lasts 1 send_interval units
   
     // Connection successful - get data
     int trans_position = 0; // position in which to save next incoming record - always starts at beginning of array
@@ -222,11 +220,12 @@ void sendFREE() {
     LoRa.beginPacket();
     LoRa.print("FREE");
     LoRa.endPacket();
+    // TODO: Change to 10?
     delay(random(send_interval/100));
   }
 }
 
-String getPacket() {
+String getConfirmation() {
   String output_LoRa = "";
   while (LoRa.available()) {
     // read packet
@@ -245,7 +244,7 @@ bool checkConnection(bool sensor_connected, String output_LoRa) {
 
 void sendID_unit(String output_LoRa) {
   long startTime = millis();        // time of last packet send
-  while(millis() - startTime < (send_interval*2)) {
+  while(millis() - startTime < (send_interval)) { // TODO: change to 2?
     LoRa.beginPacket();
     LoRa.print(output_LoRa);
     LoRa.endPacket();
