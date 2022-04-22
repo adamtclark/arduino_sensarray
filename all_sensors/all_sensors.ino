@@ -79,6 +79,7 @@ const int SF = 9;
 void setup()
 { 
    Serial.begin(9600);
+   randomSeed(unit_number); // set seed for unique random sequences
 
    // soil moisture
    for(i = 0; i < soil_mosit_probe_number; i++) {
