@@ -14,14 +14,14 @@ unsigned int checksum_precision = 1000; // precision for checksum;
 
 // set up soil moisture probes
 unsigned const int soil_mosit_probe_number = 10;
-unsigned int soil_moist_outputs[soil_mosit_probe_number];
+int soil_moist_outputs[soil_mosit_probe_number];
 unsigned const int soil_moist_sensors[soil_mosit_probe_number] = {3, 4, 5, 6, 7, 8, 9, 10, 13, 14}; 
 
 // set up air temp/humidity
 #include <DHT.h> // header for air probes
 unsigned const int max_tries = 10; // maximum tries for DHT sensor read
 unsigned const int air_probe_number = 2;
-unsigned int air_humid_outputs[air_probe_number];
+int air_humid_outputs[air_probe_number];
 int air_temp_outputs[air_probe_number];
 uint8_t air_sensors[air_probe_number] = {0, 1};
 DHT dht[] = {
@@ -43,28 +43,29 @@ int soil_temp_outputs[soil_temp_probe_number];
 // set up RTC
 #include "RTClib.h"
 RTC_DS3231 rtc;
-unsigned int rtc_month;
-unsigned int rtc_day;
-unsigned int rtc_hour;
-unsigned int rtc_minute;
-unsigned int rtc_second;
+int rtc_month;
+int rtc_day;
+int rtc_hour;
+int rtc_minute;
+int rtc_second;
 int rtc_temp;
 
 // battery check
-unsigned int battery_voltage;
+int battery_voltage;
 
 // set up arrays for data storage
 const int nrecords = 150; // number of local records to save (must be >=2)
 
 int data_air_temp[nrecords][air_probe_number];
-unsigned int data_air_humid[nrecords][air_probe_number];
+int data_air_humid[nrecords][air_probe_number];
 int data_soil_temp[nrecords][soil_temp_probe_number];
-unsigned int data_soil_moist[nrecords][soil_mosit_probe_number];
-unsigned int data_battery[nrecords];
-unsigned int data_time[nrecords][4];
+int data_soil_moist[nrecords][soil_mosit_probe_number];
+int data_battery[nrecords];
+int data_time[nrecords][4];
 int data_rtc_temp[nrecords];
 
-unsigned int samp_position = 0;  // position in data array
+int samp_position = 0;  // position in data array
+int flash_position = 0; // marker for saved status on flash chip
 int trans_position = nrecords; // last record transmitted - "nrecords" indicates that no data have been sent yet
 unsigned long total_samples = 0; // counter tracking total number of samples sent
 
@@ -117,7 +118,7 @@ void setup()
 
    // set up LoRa
    LoRa.begin(freq); // frequency (c
-   LoRa.setSpreadingFactor(SF);
+   LoRa.setSpreadingFactor(SF);  // TODO: think about best SF value
 }
 
 void loop()
@@ -219,7 +220,7 @@ void loop()
   samp_position = (samp_position + 1) % nrecords; // circular array
   total_samples++;
   
-  // print outputs
+  // print outputs // TODO: silence this
   Serial.println("printing results...");
   if(Serial) {
     if(total_samples > samp_position) {
@@ -296,6 +297,9 @@ void loop()
     }
     Serial.println();
   }
+
+  // Save to flash
+  // Every 10 measurements, save output to flash memory
 
   // Transmit over LoRa
   unsigned int failcount = 0;
