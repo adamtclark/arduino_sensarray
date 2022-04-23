@@ -17,7 +17,7 @@ unsigned const int air_probe_number = 2;
 unsigned const int soil_temp_probe_number = 2;
 unsigned const int soil_mosit_probe_number = 2;
 
-const int nrecords = 100; // number of fake records
+const int nrecords = 20; // number of fake records
 int trans_position = nrecords; // last record transmitted - "nrecords" indicates that no data have been sent yet
 unsigned int samp_position = nrecords-1; // position in data array
 
@@ -215,6 +215,7 @@ void loop() {
   }
 
   if(node_connected) {
+    Serial.println("Sending Done.");
     startTime = millis();        // time of last packet send
     while(millis() - startTime < 2*send_interval) { // send Done signal for 2*send_interval milliseconds
       sendDone(); // Send message that sending is done
@@ -385,6 +386,4 @@ void sendDone() {
   LoRa.beginPacket();
   LoRa.write((uint8_t*)&(catch_done), 2);
   LoRa.endPacket();
-
-  Serial.print("Sending Done.");
 }

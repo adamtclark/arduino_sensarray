@@ -10,7 +10,7 @@ const int send_interval = 500;
 const int numtries = 10; // number of tries before taking a break
 
 // save data
-const int nrecords = 100; // number records
+const int nrecords = 20; // number records
 
 unsigned const int air_probe_number = 2;
 unsigned const int soil_temp_probe_number = 2;
