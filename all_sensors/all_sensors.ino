@@ -302,6 +302,8 @@ void loop()
   // Every 10 measurements, save output to flash memory
 
   // Transmit over LoRa
+  // TODO: Add in timer to only send between 0:00 and 1:00
+  // TODO: Add in switch to make sure transmission only happens once during that time.
   unsigned int failcount = 0;
   while((trans_position != samp_position) & (failcount < max_failcount)) {
     // make checksum
