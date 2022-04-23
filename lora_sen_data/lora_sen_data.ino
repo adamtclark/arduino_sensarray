@@ -3,7 +3,7 @@
 unsigned int i;
 unsigned int j;
 const int node_number = 1; // unique ID for the node for this unit
-const int unit_number = 1; // unique ID for this unit (<=999)
+const int unit_number = 1; // unique ID for this unit (0<n<=999)
 const int scaling_factor = 1E3; // scaling factor for separating unit and node IDs
 String sensorID = "SensorID:" + String(node_number*scaling_factor+unit_number);
 
