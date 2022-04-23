@@ -37,6 +37,10 @@ void setup() {
   //while (!Serial);
 
   Serial.println("LoRa Sensor");
+  Serial.print("Node number:");
+  Serial.println(node_number);
+  Serial.print("Unit number:");
+  Serial.println(unit_number);
 
   if (!LoRa.begin(freq)) {
     Serial.println("Starting LoRa failed!");
@@ -65,6 +69,7 @@ void loop() {
     data_time[j][3] = random(0, 59);
     data_rtc_temp[j] = random(2000, 3000);
 
+    /*
     Serial.print("Trans position: ");
     Serial.println(j);
     
@@ -97,6 +102,7 @@ void loop() {
     Serial.print("Check Sum: ");
     long tmp = checksum_fun(j);
     Serial.println(tmp);
+    */
   }
 
   // initialize at start of loop
@@ -113,26 +119,21 @@ void loop() {
   //TODO: before begin, check whether trans_position == samp_position
 
   // Connect to Node
-  Serial.print("Waiting for FREE... ms ");
-  Serial.println(millis());
+  Serial.println("Waiting for FREE... ");
   String output_LoRa = "";
   startTime = millis();        // time of last packet send
   while(!node_connected & ((millis() - startTime) < (2*send_interval))) { // receive for 2 send intervals, or until signal received
     int packetSize = LoRa.parsePacket();
     if (packetSize) {
-      Serial.print("Signal Detected. ms ");
-      Serial.println(millis());
+      Serial.println("Signal Detected.");
 
       // TIME 0-?: FREE signal obtained
       output_LoRa = getFREE();
-      if(output_LoRa == "FREE") {
+      if(output_LoRa == ("FREE"+(String)node_number)) {
         Serial.print("Node Detected. ID ");
-        Serial.print(output_LoRa);
-        Serial.print(" . ms ");
-        Serial.println(millis());
+        Serial.println(output_LoRa);
 
         // note - this must be random in case multiple sensors send their signals at once
-        // TODO: Switch to 1-1.5 seconds?
         delay(random(0.4*send_interval) + 0.8*send_interval); // wait for 0.8 to 1.2 send_interval milliseconds
 
         // TIME 1-2: ID Sent
@@ -152,10 +153,8 @@ void loop() {
   bool all_signals_received = 0; // has transmission caught up to sampling?
   if(node_connected) {
     // connection successful - send data
-    Serial.print("Sample position ");
-    Serial.print(samp_position);
-    Serial.print(". ms ");
-    Serial.println(millis());
+    Serial.print("Sample position: ");
+    Serial.println(samp_position);
     n = 0; // start counter for maximum tries
     
     while(!all_signals_received  & n < numtries) {
@@ -167,14 +166,9 @@ void loop() {
         tmp_trans_position = ((trans_position+1) % nrecords); // record to attempt to send
       }
       
-      Serial.print("Transmitting record number ");
-      Serial.print(tmp_trans_position);
-      Serial.print(". ms ");
-      Serial.println(millis());
+      Serial.print("Transmitting record number: ");
+      Serial.println(tmp_trans_position);
       while(!signal_received & n < numtries) {
-        Serial.print("Sending Data. ms ");
-        Serial.println(millis());
-
         // TIME 0: Send Data
         startTime = millis();        // time of last packet send
         while((millis() - startTime) < (send_interval)) { // send for send_interval milliseconds
@@ -183,8 +177,6 @@ void loop() {
         }
 
         // TIME 1: Check Data
-        Serial.print("Checking Data. ms ");
-        Serial.println(millis());
         startTime = millis();        // time of last packet send
         while((millis() - startTime) < (2*send_interval)) { // receive for 2*send_interval milliseconds
           if(signal_received == 0) { // only run if signal not yet checked
@@ -194,14 +186,12 @@ void loop() {
         }
     
         if(!signal_received) {
-          Serial.print("Sending Failed. ms ");
-          Serial.println(millis());
+          Serial.println("Sending Failed.");
           n++;
         }
     
         if(n >= numtries) {
-          Serial.print("Sending Failed - ending attempts. ms ");
-          Serial.println(millis());
+          Serial.println("Sending Failed - ending attempts.");
         }
 
         // note on timing: worst case, both sensors are receiving and sending at the same time
@@ -215,15 +205,13 @@ void loop() {
         trans_position = tmp_trans_position; // increment transfer counter
         if(trans_position == (nrecords-1)) {
           all_signals_received = 1;
-          Serial.print("All Records Successfully Received: ms ");
-          Serial.println(millis());
+          Serial.println("All Records Successfully Received.");
         }
       }
     }
   }
   else {
-    Serial.print("Connection Failed - ending attempts. ms ");
-    Serial.println(millis());
+    Serial.println("Connection Failed - ending attempts.");
   }
 
   if(node_connected) {
@@ -280,16 +268,10 @@ void sendID() {
     LoRa.endPacket();
     delay(send_interval/random(100)); // TODO: switch to 10?
   }
-  Serial.print(sensorID);
-  Serial.print(" Sent. ms ");
-  Serial.println(millis());
 }
 
 bool checkID() {
   bool node_connected = 0;
-  Serial.print("Checking Unit ID: ms ");
-  Serial.println(millis());
-
   long startTime = millis();        // time of last packet send
   while(millis() - startTime < (3*send_interval)) {
     if(!node_connected) {
@@ -300,24 +282,18 @@ bool checkID() {
         while (LoRa.available()) {
           output_LoRa = output_LoRa+(char)LoRa.read();
         }
-        Serial.print("Output is: ");
-        Serial.print(output_LoRa);
-        Serial.print(". ms ");
-        Serial.println(millis());
+        Serial.print("Lora Output is: ");
+        Serial.println(output_LoRa);
         
         if(sensorID ==output_LoRa) {
           Serial.print("Successfully coupled. Node ");
-          Serial.print(output_LoRa);
-          Serial.print(" . ms ");
-          Serial.println(millis());
+          Serial.println(output_LoRa);
           node_connected = 1;
         }
       }
     }
     delay(random(send_interval/10));
   }
-
-  Serial.println("Checking Unit ID done.");
   return(node_connected);
 }
 
@@ -381,9 +357,6 @@ void sendData_fun(int trans_position) {
   LoRa.write((uint8_t*)&(checksum_out), 4);
   
   LoRa.endPacket();
-  
-  Serial.print("Data Sent. ms ");
-  Serial.println(millis());
 }
 
 bool checkData(bool signal_received) {
@@ -395,11 +368,9 @@ bool checkData(bool signal_received) {
       output_LoRa = output_LoRa+(char)LoRa.read();
     }
     Serial.print("Output is: ");
-    Serial.print(output_LoRa);
-    Serial.print(". ms ");
-    Serial.println(millis());
+    Serial.println(output_LoRa);
     
-    if(output_LoRa == "Success") {
+    if(output_LoRa == ("Success"+(String)node_number)) {
       Serial.print("Data successfully checked. ms ");
       Serial.println(millis());
       signal_received = 1;
@@ -415,6 +386,5 @@ void sendDone() {
   LoRa.write((uint8_t*)&(catch_done), 2);
   LoRa.endPacket();
 
-  Serial.print("Sending Done. ms ");
-  Serial.println(millis());
+  Serial.print("Sending Done.");
 }
