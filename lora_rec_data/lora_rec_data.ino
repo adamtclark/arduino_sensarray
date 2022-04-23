@@ -4,9 +4,7 @@
 const long freq = 868E6; // for Europe - set to 915E6 for North America
 const int SF = 9;
 const int node_number = 1; // unique ID for the node for this unit
-const int unit_number = 1; // unique ID for this unit (<=999)
 const int scaling_factor = 1E3; // scaling factor for separating unit and node IDs
-int sensorID = node_number*scaling_factor+unit_number;
 
 const int send_interval = 500;
 const int numtries = 10; // number of tries before taking a break
@@ -89,6 +87,7 @@ void loop() {
     }
   }
 
+  int trans_position = 0; // position in which to save next incoming record - always starts at beginning of array
   if(sensor_connected) {
     // send unit number for confirmation
     Serial.println("Sending Unit Confirmation...");
@@ -96,7 +95,6 @@ void loop() {
     sendID_unit(output_LoRa); // lasts 2 send_interval units
   
     // Connection successful - get data
-    int trans_position = 0; // position in which to save next incoming record - always starts at beginning of array
     bool all_records_received = 0; // have all records been received?
   
     int old_position = nrecords; // set initial value for tracking memory position of transmitted data on local sensor node
@@ -187,7 +185,13 @@ void loop() {
   if((!sensor_connected) < (n >= numtries)) {
     Serial.println("Receiving Failed - ending attempts.");
   }
-  
+
+  // Save to SD card
+  /*
+  if(trans_position != 0) { // check that transmission occurred
+    
+  }
+  */
   // TODO: Need to add saving data to SD card.
 
   Serial.println("End of task.");
@@ -329,7 +333,7 @@ int getData_fun(int trans_position, int old_position) {
         buf[j] = LoRa.read();
     }
     save_checksum_out[trans_position] = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
-  }  
+  }
 
   return(catch_done);
 }
