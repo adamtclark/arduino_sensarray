@@ -380,7 +380,6 @@ bool checkData(bool signal_received) {
   return(signal_received);
 }
 
-
 void sendDone() {
   int catch_done = 9999; // variable for signalling that data has all been sent
   LoRa.beginPacket();

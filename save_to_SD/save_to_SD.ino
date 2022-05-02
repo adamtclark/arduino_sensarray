@@ -19,7 +19,7 @@
 */
 
 #include <SPI.h>
-#include <Flash.h>
+#include <SD.h>
 
 File myFile;
 const int nrecords = 100; // number records
@@ -34,7 +34,6 @@ void setup() {
   while (!Serial) ; //wait for serial monitor to connect
   delay(500);
 
-  
   Serial.print("Initializing SD card...");
   if (!SD.begin(32)) {
     Serial.println("initialization failed!");
@@ -54,32 +53,32 @@ void setup() {
       // Create combined string line for data:
       for(int j = 0; j < nrecords; j++) {
         for(i = 0; i < air_probe_number; i++) {
-          myFile.print(save_air_temp[trans_position][i]);
+          myFile.print(save_air_temp[j][i]);
           myFile.print("; ")
         }
         for(i = 0; i < air_probe_number; i++) {
-          myFile.print(save_air_humid[trans_position][i]);
+          myFile.print(save_air_humid[j][i]);
           myFile.print("; ")
         }
         for(i = 0; i < soil_temp_probe_number; i++) {
-          myFile.print(save_soil_temp[trans_position][i]);
+          myFile.print(save_soil_temp[j][i]);
           myFile.print("; ")
         }
         for(i = 0; i < soil_mosit_probe_number; i++) {
-          myFile.print(save_soil_moist[trans_position][i]);
+          myFile.print(save_soil_moist[j][i]);
           myFile.print("; ")
         }
-        myFile.print(save_battery[trans_position]);
+        myFile.print(save_battery[j]);
         myFile.print("; ")
         for(i = 0; i < 4; i++) {
-          myFile.print(save_time[trans_position][i]);
+          myFile.print(save_time[j][i]);
           myFile.print("; ")
         }
-        myFile.print(save_rtc_temp[trans_position]);
+        myFile.print(save_rtc_temp[j]);
         myFile.print("; ")
-        myFile.print(save_unit_number[trans_position]);
+        myFile.print(save_unit_number[j]);
         myFile.print("; ")
-        myFile.print(save_checksum_out[trans_position]);
+        myFile.print(save_checksum_out[j]);
         myFile.println()
       }
       
