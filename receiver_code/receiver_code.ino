@@ -61,6 +61,16 @@ void setup() {
   LoRa.begin(freq); // Set LoRa frequency
   LoRa.setSpreadingFactor(SF);  // TODO: think about best SF value
 
+  // RTC
+  pinMode(A2, OUTPUT);
+  digitalWrite(A2, HIGH);
+  delay(1000);
+  rtc.begin();
+  if (rtc.lostPower()) { // reset time if unit battery ran out (to time of last compiling!!)
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
+  digitalWrite(A2, LOW);
+
   // Set up SD
   // TODO: Move into loop if necessary?
   Serial.print("SD Initializing SD card...");
