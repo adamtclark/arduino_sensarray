@@ -54,7 +54,7 @@ int rtc_temp;
 int battery_voltage;
 
 // set up arrays for data storage
-const int nrecords = 150; // number of local records to save (must be >=2)
+const int nrecords = 100; // number of local records to save (must be >=2)
 
 int data_air_temp[nrecords][air_probe_number];
 int data_air_humid[nrecords][air_probe_number];
@@ -217,6 +217,7 @@ void loop()
   data_rtc_temp[samp_position] = rtc_temp;
 
   // increment sample position
+  j = samp_position;
   samp_position = (samp_position + 1) % nrecords; // circular array
   total_samples++;
   
@@ -235,7 +236,8 @@ void loop()
     }
     Serial.print("Max samples: ");
     Serial.println(total_samples);
-    for(j = 0; j < jmax; j++) {
+
+    //for(j = 0; j < jmax; j++) {
       Serial.print("Record number: ");
       Serial.println(j);
       
@@ -296,44 +298,14 @@ void loop()
       Serial.println(data_battery[j]);
     }
     Serial.println();
-  }
+  //}
 
-  // Save to flash
-  // Every 10 measurements, save output to flash memory
-
-  // Transmit over LoRa
-  // TODO: Add in timer to only send between 0:00 and 1:00
-  // TODO: Add in switch to make sure transmission only happens once during that time.
-  unsigned int failcount = 0;
-  while((trans_position != samp_position) & (failcount < max_failcount)) {
-    // make checksum
-    long checksum_out = checksum_fun(trans_position);
-
-    // wait until connection is open
-
-
-    
-    // send signals
-    
-    
-    // send checksum
-
-    
-    // get checksum result
-    
-    
-    //if(checksumpass) {
-      // transmission worked
-      trans_position = (trans_position + 1) % nrecords;
-    //} else {
-      // transmission failed
-      failcount++;
-    //}
-  }
-
-
+  
   Serial.println("sleep...");
+  delay(2000);
+  
   // Save power
+  /*
   USBDevice.detach();
   for(i = 0; i < num_sleepcylces; i++) {
     LowPower.sleep(8000);
@@ -342,6 +314,7 @@ void loop()
   Serial.begin(9600);
   Serial.println("wake up...");
   Serial.println();
+  */
 }
 
 

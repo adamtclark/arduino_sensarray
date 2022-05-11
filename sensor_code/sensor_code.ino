@@ -4,7 +4,7 @@ const int node_number = 1; // unique ID for the node for this unit (0<n<=999)
 const int scaling_factor = 1E3; // scaling factor for separating unit and node IDs
 String sensorID = "SensorID:" + String(node_number*scaling_factor+unit_number);
 
-unsigned const int num_sleepcylces = 75; // number of 8-second sleep cycles between readings; 75 = 10 minutes
+unsigned const int num_sleepcylces = 10;// 75; // number of 8-second sleep cycles between readings; 75 = 10 minutes
 
 // global variables
 unsigned int i;
@@ -122,7 +122,7 @@ void setup()
    digitalWrite(A2, HIGH);
    delay(1000);
    rtc.begin();
-   if (rtc.lostPower()) { // reset time if unit battery ran out
+   if (rtc.lostPower()) { // reset time if unit battery ran out (to time of last compiling!!)
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
    }
    digitalWrite(A2, LOW);
