@@ -233,85 +233,95 @@ void loop()
 
   // print outputs // TODO: silence this
   Serial.println("printing results...");
-  if(Serial) {
-    if(total_samples > samp_position) {
-      // we have already gone around the circular array at least once.
-      // read out all records
-      jmax = nrecords;
-    }
-    else {
-      // we have not yet gone around the circular array at least once.
-      // read out only to samp_position.
-      jmax = samp_position;
-    }
-    Serial.print("Max samples: ");
-    Serial.println(total_samples);
-    for(j = 0; j < jmax; j++) {
-      Serial.print("Record number: ");
-      Serial.println(j);
-      
-      // print time
-      Serial.print("Time: ");
-      Serial.print(data_time[j][0]);
-      Serial.print('/');
-      Serial.print(data_time[j][1]);
-      Serial.print('-');
-      Serial.print(data_time[j][2]);
-      Serial.print(':');
-      Serial.print(data_time[j][3]);
-      Serial.print("; Temp: ");
-      Serial.print(data_rtc_temp[j]);
-      Serial.println();
+  if(total_samples > samp_position) {
+    // we have already gone around the circular array at least once.
+    // read out all records
+    jmax = nrecords;
+  }
+  else {
+    // we have not yet gone around the circular array at least once.
+    // read out only to samp_position.
+    jmax = samp_position;
+  }
+  //Serial.print("Max samples: ");
+  //Serial.println(total_samples);
+  j = samp_position;
+  //for(j = 0; j < jmax; j++) {
+    Serial.print("Record number: ");
+    Serial.println(j);
     
-      // print soil moisture
-      for(i = 0; i < soil_mosit_probe_number; i++) {
-        Serial.print("SM");
-        Serial.print(soil_moist_sensors[i]);
-        Serial.print(": ");
-        Serial.print(data_soil_moist[j][i]);
-        Serial.print("; ");
-      }
-      Serial.println();
-    
-      // print air humid
-      for(i = 0; i < air_probe_number; i++) {
-        Serial.print("AH");
-        Serial.print(air_sensors[i]);
-        Serial.print(": ");
-        Serial.print(data_air_humid[j][i]);
-        Serial.print("; ");
-      }
-    
-      // print air temp
-      for(i = 0; i < air_probe_number; i++) {
-        Serial.print("AT");
-        Serial.print(air_sensors[i]);
-        Serial.print(": ");
-        Serial.print(data_air_temp[j][i]);
-        Serial.print("; ");
-      }
-      Serial.println();
-    
-      // print soil temp
-      for(i = 0; i < soil_temp_probe_number; i++) {
-        Serial.print("ST");
-        Serial.print(i);
-        Serial.print(": ");
-        Serial.print(data_soil_temp[j][i]);
-        Serial.print("; ");
-      }
-      Serial.println();
-    
-      // print battery voltage;
-      Serial.print("BVolt: ");
-      Serial.println(data_battery[j]);
+    // print time
+    Serial.print("Time: ");
+    Serial.print(data_time[j][0]);
+    Serial.print('/');
+    Serial.print(data_time[j][1]);
+    Serial.print('-');
+    Serial.print(data_time[j][2]);
+    Serial.print(':');
+    Serial.print(data_time[j][3]);
+    Serial.print("; Temp: ");
+    Serial.print(data_rtc_temp[j]);
+    Serial.println();
+  
+    // print soil moisture
+    for(i = 0; i < soil_mosit_probe_number; i++) {
+      Serial.print("SM");
+      Serial.print(soil_moist_sensors[i]);
+      Serial.print(": ");
+      Serial.print(data_soil_moist[j][i]);
+      Serial.print("; ");
     }
     Serial.println();
-  }
+  
+    // print air humid
+    for(i = 0; i < air_probe_number; i++) {
+      Serial.print("AH");
+      Serial.print(air_sensors[i]);
+      Serial.print(": ");
+      Serial.print(data_air_humid[j][i]);
+      Serial.print("; ");
+    }
+  
+    // print air temp
+    for(i = 0; i < air_probe_number; i++) {
+      Serial.print("AT");
+      Serial.print(air_sensors[i]);
+      Serial.print(": ");
+      Serial.print(data_air_temp[j][i]);
+      Serial.print("; ");
+    }
+    Serial.println();
+  
+    // print soil temp
+    for(i = 0; i < soil_temp_probe_number; i++) {
+      Serial.print("ST");
+      Serial.print(i);
+      Serial.print(": ");
+      Serial.print(data_soil_temp[j][i]);
+      Serial.print("; ");
+    }
+    Serial.println();
+  
+    // print battery voltage;
+    Serial.print("BVolt: ");
+    Serial.println(data_battery[j]);
+  //}
+  Serial.println();
 
   // Transmit over LoRa
   int tmp_time = data_time[samp_position][2]; // current hour, from RTC
-  if((tmp_time > trans_start_time) & (tmp_time < trans_end_time) & (trans_sent_today ==0)) { // only run from midnight to 1 AM.
+  Serial.print("Current Hour: ");
+  Serial.println(tmp_time);
+  Serial.print("Start Hour: ");
+  Serial.println(trans_start_time);
+  Serial.print("End Hour: ");
+  Serial.println(trans_end_time);
+
+  if(!((tmp_time >= trans_start_time) & (tmp_time < trans_end_time))) {
+    trans_sent_today = 0;
+  }
+  
+  if((tmp_time >= trans_start_time) & (tmp_time < trans_end_time) & (trans_sent_today==0)) { // only run from trans_start_time to trans_end_time.
     // Set up for transmission
     trans_position = nrecords;
     bool node_connected = 0; // no sensor connected yet
@@ -320,7 +330,7 @@ void loop()
     int tmp_trans_position; // temporary position for sending data
 
     // Loop: keep trying to transmit for the full time window, until successful
-    while((tmp_time > trans_start_time) & (tmp_time < trans_end_time) & (trans_sent_today ==0)) {
+    while((tmp_time >= trans_start_time) & (tmp_time < trans_end_time) & (trans_sent_today ==0)) {
       // Connect to Node
       Serial.println("Waiting for FREE... ");
       String output_LoRa = "";
@@ -448,10 +458,6 @@ void loop()
       tmp_time = now.hour();
     }
   }
-  else {
-    // outside of transmission time - reset trigger
-    trans_sent_today = 0;  
-  }
 
   // Save to flash
   long ilong;
@@ -542,12 +548,19 @@ void loop()
   // Go to sleep and wait for next reading
   Serial.println("sleep...");
   // Save power
+  ///*
   USBDevice.detach();
   for(i = 0; i < num_sleepcylces; i++) {
     LowPower.sleep(8000);
   }
   USBDevice.attach();
   Serial.begin(9600);
+  //*/
+  /*
+  for(i = 0; i < num_sleepcylces; i++) {
+    delay(8000);
+  }
+  */
   Serial.println("wake up...");
   Serial.println();
 }

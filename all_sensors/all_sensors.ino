@@ -2,7 +2,7 @@
 const int unit_number = 1; // unique ID for this unit (0<n<=999)
 const int node_number = 0; // unique ID for the node for this unit
 
-unsigned const int num_sleepcylces = 1; // number of 8-second sleep cycles between readings
+unsigned const int num_sleepcylces = 1; // number of 1-second sleep cycles between readings
 
 // global variables
 unsigned int i;
@@ -302,7 +302,9 @@ void loop()
 
   
   Serial.println("sleep...");
-  delay(2000);
+  for(i = 0; i < num_sleepcylces; i++) {
+    delay(1000);
+  }
   
   // Save power
   /*
