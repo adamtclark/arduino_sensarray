@@ -89,7 +89,7 @@ void loop() {
   int packetSize;
   unsigned int n;
   
-  while((tmp_time > trans_start_time) & (tmp_time < trans_end_time)) {
+  while((tmp_time >= trans_start_time) & (tmp_time < trans_end_time)) {
     n = 0;
   
     long startTime;
@@ -99,7 +99,7 @@ void loop() {
     // Broadcast that the node is free to recieve
     bool sensor_connected = 0;
     // TODO: add in break condition in case sensor is not connected?
-    while(!sensor_connected & (tmp_time > trans_start_time) & (tmp_time < trans_end_time)) {
+    while(!sensor_connected & (tmp_time >= trans_start_time) & (tmp_time < trans_end_time)) {
       // TIME 0-1: FREE Sent
       Serial.println("Sending FREE...");
       sendFREE(); // lasts 1 send_interval
