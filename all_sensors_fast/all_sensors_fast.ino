@@ -11,6 +11,8 @@ unsigned int jmax = 1;
 unsigned int max_failcount = 5; // maximum number of failed transmissions before giving up;
 unsigned int checksum_precision = 1000; // precision for checksum;
 
+bool show_temp = 0;
+bool show_moist = 1;
 
 // set up soil moisture probes
 unsigned const int soil_mosit_probe_number = 10;
@@ -125,95 +127,33 @@ void loop()
 {
   LoRa.sleep(); // start in sleep mode
   
-  Serial.print("Measurement number: ");
-  Serial.println(samp_position);
-  Serial.println("measuring soil moisture...");
+  //Serial.print("Measurement number: ");
+  //Serial.println(samp_position);
+  //Serial.println("measuring soil moisture...");
   // soil moisture
   for(i = 0; i < soil_mosit_probe_number; i++) {
     digitalWrite(soil_moist_sensors[i], HIGH);
-    delay(1000);            // waits for a second
+    delay(200);            // waits for a second
     soil_moist_outputs[i] = analogRead(A0);
     digitalWrite(soil_moist_sensors[i], LOW);
   }
 
-  /*
-  Serial.println("measuring air...");
-  // air temp and humid
-  for(i = 0; i < air_probe_number; i++) {
-    int n;
-    //Read data and store it to variables hum and temp
-    n = 0;
-    air_humid_outputs[i] = round(dht[i].readHumidity()*100);
-    while (isnan(air_humid_outputs[i]) & n < max_tries) {
-      delay(1000);
-      air_humid_outputs[i] = round(dht[i].readHumidity()*100);
-      n++;
-    }
-    n = 0;
-    air_temp_outputs[i] = round(dht[i].readTemperature()*100);
-    while (isnan(air_temp_outputs[i]) & n < max_tries) {
-      delay(1000);
-      air_temp_outputs[i] = round(dht[i].readTemperature()*100);
-      n++;
-    }
-  }
-  */
-
-  Serial.println("measuring soil temp...");
+  //Serial.println("measuring soil temp...");
   // soil temp
-  delay(1000);
+  delay(200);
   sensors.requestTemperatures();
   for(i = 0; i <soil_temp_probe_number; i++) {
      soil_temp_outputs[i] = round(sensors.getTempC(deviceAddress[i])*100);
   }
 
-  Serial.println("measuring battery...");
-  // battery level
-  /*
-  digitalWrite(A6, HIGH);
-  delay(2000);
-  analogReference(AR_INTERNAL);
-  for(i = 0; i < 10; i++) {
-    battery_voltage = analogRead(A1);
-    delay(100);
-  }
-  */
-  battery_voltage = analogRead(A1);
-  /*
-  analogReference(AR_DEFAULT);
-  for(i = 0; i < 10; i++) {
-    analogRead(A1);
-    delay(100);
-  }
-  digitalWrite(A6, LOW);
-  */
-
-  Serial.println("measuring time...");
-  // RTC
-  digitalWrite(A2, HIGH);
-  delay(5000);
-  DateTime now = rtc.now();
-  rtc_temp = round(rtc.getTemperature()*100);
-  digitalWrite(A2, LOW);
-  rtc_month = now.month();
-  rtc_day = now.day();
-  rtc_hour = now.hour();
-  rtc_minute = now.minute();
-  rtc_second = now.second();
-
-  Serial.println("saving results...");
+  //Serial.println("saving results...");
   // save results
-  for(i = 0; i < air_probe_number; i++) {
-    data_air_temp[samp_position][i] = air_temp_outputs[i];
-    data_air_humid[samp_position][i] = air_humid_outputs[i];
-  }
   for(i = 0; i < soil_temp_probe_number; i++) {
     data_soil_temp[samp_position][i] = soil_temp_outputs[i];
   }
   for(i = 0; i < soil_mosit_probe_number; i++) {
     data_soil_moist[samp_position][i] = soil_moist_outputs[i];
   }
-  data_battery[samp_position] = battery_voltage;
   
   data_time[samp_position][0] = rtc_month;
   data_time[samp_position][1] = rtc_day;
@@ -226,8 +166,7 @@ void loop()
   samp_position = (samp_position + 1) % nrecords; // circular array
   total_samples++;
   
-  // print outputs // TODO: silence this
-  Serial.println("printing results...");
+  //Serial.println("printing results...");
   if(Serial) {
     if(total_samples > samp_position) {
       // we have already gone around the circular array at least once.
@@ -239,89 +178,39 @@ void loop()
       // read out only to samp_position.
       jmax = samp_position;
     }
-    Serial.print("Max samples: ");
-    Serial.println(total_samples);
+    //Serial.print("Max samples: ");
+    //Serial.println(total_samples);
 
     //for(j = 0; j < jmax; j++) {
-      Serial.print("Record number: ");
-      Serial.println(j);
-      
-      // print time
-      Serial.print("Time: ");
-      Serial.print(data_time[j][0]);
-      Serial.print('/');
-      Serial.print(data_time[j][1]);
-      Serial.print('-');
-      Serial.print(data_time[j][2]);
-      Serial.print(':');
-      Serial.print(data_time[j][3]);
-      Serial.print("; Temp: ");
-      Serial.print(data_rtc_temp[j]);
-      Serial.println();
+      //Serial.print("Record number: ");
+      //Serial.println(j);
     
       // print soil moisture
-      for(i = 0; i < soil_mosit_probe_number; i++) {
-        Serial.print("SM");
-        Serial.print(soil_moist_sensors[i]);
-        Serial.print(": ");
-        Serial.print(data_soil_moist[j][i]);
-        Serial.print("; ");
+      if(show_moist) {
+        for(i = 0; i < soil_mosit_probe_number; i++) {
+          Serial.print("SM");
+          Serial.print(soil_moist_sensors[i]);
+          Serial.print(": ");
+          Serial.print(data_soil_moist[j][i]);
+          Serial.print("; ");
+        }
+        Serial.println();
       }
-      Serial.println();
-    
-      // print air humid
-      for(i = 0; i < air_probe_number; i++) {
-        Serial.print("AH");
-        Serial.print(air_sensors[i]);
-        Serial.print(": ");
-        Serial.print(data_air_humid[j][i]);
-        Serial.print("; ");
-      }
-    
-      // print air temp
-      for(i = 0; i < air_probe_number; i++) {
-        Serial.print("AT");
-        Serial.print(air_sensors[i]);
-        Serial.print(": ");
-        Serial.print(data_air_temp[j][i]);
-        Serial.print("; ");
-      }
-      Serial.println();
     
       // print soil temp
-      for(i = 0; i < soil_temp_probe_number; i++) {
-        Serial.print("ST");
-        Serial.print(i);
-        Serial.print(": ");
-        Serial.print(data_soil_temp[j][i]);
-        Serial.print("; ");
+      if(show_temp) {
+        for(i = 0; i < soil_temp_probe_number; i++) {
+          Serial.print("ST");
+          Serial.print(i);
+          Serial.print(": ");
+          Serial.print(data_soil_temp[j][i]);
+          Serial.print("; ");
+        }
+        Serial.println();
       }
-      Serial.println();
-    
-      // print battery voltage;
-      Serial.print("BVolt: ");
-      Serial.println(data_battery[j]);
     }
-    Serial.println();
+    //Serial.println();
   //}
-
-  
-  Serial.println("sleep...");
-  for(i = 0; i < num_sleepcylces; i++) {
-    delay(1000);
-  }
-  
-  // Save power
-  /*
-  USBDevice.detach();
-  for(i = 0; i < num_sleepcylces; i++) {
-    LowPower.sleep(8000);
-  }
-  USBDevice.attach();
-  Serial.begin(9600);
-  Serial.println("wake up...");
-  Serial.println();
-  */
 }
 
 

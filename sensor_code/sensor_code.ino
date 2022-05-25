@@ -4,7 +4,7 @@ const int node_number = 1; // unique ID for the node for this unit (0<n<=999)
 const int scaling_factor = 1E3; // scaling factor for separating unit and node IDs
 String sensorID = "SensorID:" + String(node_number*scaling_factor+unit_number);
 
-unsigned const int num_sleepcylces = 10;// 75; // number of 8-second sleep cycles between readings; 75 = 10 minutes
+unsigned const int num_sleepcylces = 75; // number of 8-second sleep cycles between readings; 75 = 10 minutes
 
 // global variables
 unsigned int i;
@@ -18,16 +18,16 @@ int soil_moist_outputs[soil_mosit_probe_number];
 unsigned const int soil_moist_sensors[soil_mosit_probe_number] = {3, 4, 5, 6, 7, 8, 9, 10, 13, 14}; // pins for sensors 
 
 // set up air temp/humidity
-#include <DHT.h> // header for air probes
+// #include <DHT.h> // header for air probes
 unsigned const int max_tries = 10; // maximum tries for DHT sensor read
 unsigned const int air_probe_number = 2;
 int air_humid_outputs[air_probe_number];
 int air_temp_outputs[air_probe_number];
 uint8_t air_sensors[air_probe_number] = {0, 1};
-DHT dht[] = {
-  {air_sensors[1], DHT22},
-  {air_sensors[2], DHT22},
-};
+// DHT dht[] = {
+//   {air_sensors[1], DHT22},
+//   {air_sensors[2], DHT22},
+// };
 
 // set up soil temp
 unsigned const int soil_temp_probe_number = 10;
@@ -104,9 +104,9 @@ void setup()
    }
 
    // air
-   for(i = 0; i < air_probe_number; i++) {
-       dht[i].begin();
-   }
+   // for(i = 0; i < air_probe_number; i++) {
+   //     dht[i].begin();
+   // }
 
    // soil temp
    sensors.begin();
@@ -128,8 +128,8 @@ void setup()
    digitalWrite(A2, LOW);
 
    // battery check
-   pinMode(A6, OUTPUT);
-   digitalWrite(A6, LOW);
+   // pinMode(A6, OUTPUT);
+   // digitalWrite(A6, LOW);
 
    // set up LoRa
    LoRa.begin(freq); // Set LoRa frequency
@@ -151,6 +151,7 @@ void loop()
     digitalWrite(soil_moist_sensors[i], LOW);
   }
 
+  /*
   Serial.println("measuring air...");
   // air temp and humid
   for(i = 0; i < air_probe_number; i++) {
@@ -171,6 +172,7 @@ void loop()
       n++;
     }
   }
+  */
 
   Serial.println("measuring soil temp...");
   // soil temp
@@ -180,6 +182,7 @@ void loop()
      soil_temp_outputs[i] = round(sensors.getTempC(deviceAddress[i])*100);
   }
 
+  /*
   Serial.println("measuring battery...");
   // battery level
   digitalWrite(A6, HIGH);
@@ -197,6 +200,7 @@ void loop()
     delay(100);
   }
   digitalWrite(A6, LOW);
+  */
 
   Serial.println("measuring time...");
   // RTC
