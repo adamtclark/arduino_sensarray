@@ -88,6 +88,7 @@ void loop() {
   int catch_done;
   int packetSize;
   unsigned int n;
+  delay(8000); 
   
   while((tmp_time >= trans_start_time) & (tmp_time < trans_end_time)) {
     n = 0;

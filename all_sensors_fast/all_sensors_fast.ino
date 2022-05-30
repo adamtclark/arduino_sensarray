@@ -1,6 +1,6 @@
 #include <ArduinoLowPower.h>
 const int unit_number = 1; // unique ID for this unit (0<n<=999)
-const int node_number = 0; // unique ID for the node for this unit
+const int node_number = 1; // unique ID for the node for this unit
 
 unsigned const int num_sleepcylces = 1; // number of 1-second sleep cycles between readings
 
@@ -11,8 +11,8 @@ unsigned int jmax = 1;
 unsigned int max_failcount = 5; // maximum number of failed transmissions before giving up;
 unsigned int checksum_precision = 1000; // precision for checksum;
 
-bool show_temp = 0;
-bool show_moist = 1;
+bool show_temp = 1; // 0 to NOT show temperature, 1 to show tempera
+bool show_moist = 1; // 0 to NOT show moisture, 1 to show moisture
 
 // set up soil moisture probes
 unsigned const int soil_mosit_probe_number = 10;
