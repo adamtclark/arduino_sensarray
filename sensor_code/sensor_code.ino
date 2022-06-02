@@ -1,6 +1,6 @@
 #include <ArduinoLowPower.h>
-const int unit_number = 4; // unique ID for this unit (0<n<=999)
-const int node_number = 1; // unique ID for the node for this unit (0<n<=999)
+const int unit_number = 19; // unique ID for this unit (0<n<=999)
+const int node_number = 2; // unique ID for the node for this unit (0<n<=999)
 const int scaling_factor = 1E3; // scaling factor for separating unit and node IDs
 String sensorID = "SensorID:" + String(node_number*scaling_factor+unit_number);
 
@@ -139,6 +139,16 @@ void setup()
 void loop()
 {
   LoRa.sleep(); // start in sleep mode
+
+  bool firstrun = 1;
+  if(firstrun) {
+    digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on 
+    delay(1000);                       // wait for a second
+    digitalWrite(LED_BUILTIN, LOW);    // turn the LED off 
+
+    delay(10000); // wait 10 seconds to allow new scripts to be uploaded
+    firstrun = 0;
+  }
   
   Serial.print("Measurement number: ");
   Serial.println(samp_position);

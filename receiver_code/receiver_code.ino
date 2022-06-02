@@ -4,7 +4,7 @@
 
 const long freq = 868E6; // for Europe - set to 915E6 for North America
 const int SF = 9;
-const int node_number = 1; // unique ID for the node for this unit (0<n<=999)
+const int node_number = 2; // unique ID for the node for this unit (0<n<=999)
 const int scaling_factor = 1E3; // scaling factor for separating unit and node IDs
 unsigned const int num_sleepcylces = 75; // number of 8-second sleep cycles between readings; 75 = 10 minutes
 
@@ -88,8 +88,24 @@ void loop() {
   int catch_done;
   int packetSize;
   unsigned int n;
-  delay(8000); 
-  
+
+  bool firstrun = 1;
+  if(firstrun) {
+    digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on 
+    delay(1000);                       // wait for a second
+    digitalWrite(LED_BUILTIN, LOW);    // turn the LED off 
+
+    delay(10000); // wait 10 seconds to allow new scripts to be uploaded
+
+    // Get current hour
+    digitalWrite(A2, HIGH);
+    delay(5000);
+    DateTime now = rtc.now();
+    digitalWrite(A2, LOW);
+    tmp_time = now.hour();
+    firstrun = 0;
+  }
+
   while((tmp_time >= trans_start_time) & (tmp_time < trans_end_time)) {
     n = 0;
   
@@ -240,7 +256,10 @@ void loop() {
       // open the file. note that only one file can be open at a time,
       // so you have to close this one before opening another.
       int unit_number_log = save_unit_number[1];
-      myFile = SD.open("logfile_"+(String)unit_number_log+".csv", FILE_WRITE);
+      Serial.print("Unit Number: ");
+      Serial.println(unit_number_log);
+      
+      myFile = SD.open("logfile"+(String)unit_number_log+".csv", FILE_WRITE);
     
       // if the file opened okay, write to it:
       if (myFile) {
